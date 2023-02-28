@@ -156,6 +156,7 @@ impl Server {
         .route("/feed.xml", get(Self::feed))
         .route("/input/:block/:transaction/:input", get(Self::input))
         .route("/inscription/:inscription_id", get(Self::inscription))
+        .route("/inscription_by_number/:inscription_number", get(Self::inscription_by_number))
         .route("/inscriptions", get(Self::inscriptions))
         .route("/inscriptions/:from", get(Self::inscriptions_from))
         .route("/install.sh", get(Self::install_script))
@@ -941,6 +942,19 @@ impl Server {
       }
       .page(page_config, index.has_sat_index()?),
     )
+  }
+
+  async fn inscription_by_number(
+    Extension(page_config): Extension<Arc<PageConfig>>,
+    Extension(index): Extension<Arc<Index>>,
+    Path(inscription_number): Path<u64>,
+  ) -> ServerResult<PageHtml<InscriptionHtml>>{
+
+    let inscription_id = index
+    .get_inscription_id_by_inscription_number(inscription_number)?
+    .ok_or_not_found(|| format!("inscription number {inscription_number}"))?;
+
+    Self::inscription(Extension(page_config), Extension(index), Path(inscription_id)).await
   }
 
   async fn inscriptions(
