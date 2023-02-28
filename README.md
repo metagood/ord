@@ -1,6 +1,14 @@
+`ord-ocm`
+=====
+* Added the endpoint `/inscription_by_number/:number`.  
+  To use this endpoint, 1) install rust and build `ord` from source (see [building section](#building)) and then 2) start your `bitcoind` daemon and finally 3) start `ord` server
+  ```
+  sudo ./target/release/ord --chain=<CHAIN> --cookie-file=~/.bitcoin/<COOKIE_FILE> --rpc-url=<RPC_URL><PORT> server
+  ```
+  for `signet`, the cookie file should be `~/.bitcoin/signet/.cookie`, for mainnet  `~/.bitcoin/.cookie`.
+
 `ord`
 =====
-
 `ord` is an index, block explorer, and command-line wallet. It is experimental
 software with no warranty. See [LICENSE](LICENSE) for more details.
 
