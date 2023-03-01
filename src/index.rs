@@ -244,6 +244,37 @@ impl Index {
     })
   }
 
+  pub(crate) fn get_inscription_number_and_ids(
+    &self,
+  ) -> Result<BTreeMap<u64, InscriptionId>> {
+
+    Ok(
+      self
+        .database
+        .begin_read()?
+        .open_table(INSCRIPTION_NUMBER_TO_INSCRIPTION_ID)?
+        .range(0..)?
+        .map(|(n, id)| (n.value(), Entry::load(*id.value())))
+        .collect(),
+    )
+  }
+
+  pub(crate) fn get_inscription_sats_and_ids(
+    &self,
+  ) -> Result<BTreeMap<SatPoint, InscriptionId>> {
+
+    Ok(
+      self
+        .database
+        .begin_read()?
+        .open_table(INSCRIPTION_ID_TO_SATPOINT)?
+        //.range::<&[u8;36],&[u8;44]>?
+        .range::<&[u8;36]>(&[0; 36]..)?
+        .map(|(id, satpoint)| (Entry::load(*satpoint.value()), Entry::load(*id.value())))
+        .collect(),
+    )
+  }
+
   pub(crate) fn get_unspent_outputs(&self, _wallet: Wallet) -> Result<BTreeMap<OutPoint, Amount>> {
     let mut utxos = BTreeMap::new();
     utxos.extend(

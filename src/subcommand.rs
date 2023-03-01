@@ -12,6 +12,7 @@ pub mod subsidy;
 pub mod supply;
 pub mod traits;
 pub mod wallet;
+mod snapshot;
 
 fn print_json(output: impl Serialize) -> Result {
   serde_json::to_writer_pretty(io::stdout(), &output)?;
@@ -45,6 +46,8 @@ pub(crate) enum Subcommand {
   Traits(traits::Traits),
   #[clap(subcommand, about = "Wallet commands")]
   Wallet(wallet::Wallet),
+  #[clap(about = "Take a snapshot of current indexed inscriptions")]
+  Snapshot,
 }
 
 impl Subcommand {
@@ -67,6 +70,7 @@ impl Subcommand {
       Self::Supply => supply::run(),
       Self::Traits(traits) => traits.run(),
       Self::Wallet(wallet) => wallet.run(options),
+      Self::Snapshot => snapshot::run(options),
     }
   }
 }

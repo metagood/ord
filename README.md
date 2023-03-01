@@ -7,6 +7,8 @@
   ```
   for `signet`, the cookie file should be `~/.bitcoin/signet/.cookie`, for mainnet  `~/.bitcoin/.cookie`.
 
+* Added the cli command `ord snapshot`.
+
 `ord`
 =====
 `ord` is an index, block explorer, and command-line wallet. It is experimental
