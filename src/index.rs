@@ -208,8 +208,8 @@ impl Index {
         tx.open_table(INSCRIPTION_NUMBER_TO_INSCRIPTION_ID)?;
         tx.open_table(OUTPOINT_TO_VALUE)?;
         tx.open_table(SATPOINT_TO_INSCRIPTION_ID)?;
-        tx.open_table(SAT_TO_INSCRIPTION_ID)?;
-        tx.open_table(SAT_TO_SATPOINT)?;
+        tx.open_table(SAT_TO_INSCRIPTION_ID)?; // empty
+        tx.open_table(SAT_TO_SATPOINT)?; // empty
         tx.open_table(WRITE_TRANSACTION_STARTING_BLOCK_COUNT_TO_TIMESTAMP)?;
 
         tx.open_table(STATISTIC_TO_COUNT)?
@@ -244,35 +244,19 @@ impl Index {
     })
   }
 
-  pub(crate) fn get_inscription_number_and_ids(
+  pub(crate) fn get_inscription_ids_by_number(
     &self,
-  ) -> Result<BTreeMap<u64, InscriptionId>> {
-
-    Ok(
+  ) -> Result<HashMap<InscriptionId, u64>> {
+    let map: HashMap<InscriptionId, u64> = HashMap::from_iter(
       self
         .database
         .begin_read()?
         .open_table(INSCRIPTION_NUMBER_TO_INSCRIPTION_ID)?
         .range(0..)?
-        .map(|(n, id)| (n.value(), Entry::load(*id.value())))
-        .collect(),
-    )
-  }
+        .map(|(n, id)| (Entry::load(*id.value()), n.value()))
+    );
 
-  pub(crate) fn get_inscription_sats_and_ids(
-    &self,
-  ) -> Result<BTreeMap<SatPoint, InscriptionId>> {
-
-    Ok(
-      self
-        .database
-        .begin_read()?
-        .open_table(INSCRIPTION_ID_TO_SATPOINT)?
-        //.range::<&[u8;36],&[u8;44]>?
-        .range::<&[u8;36]>(&[0; 36]..)?
-        .map(|(id, satpoint)| (Entry::load(*satpoint.value()), Entry::load(*id.value())))
-        .collect(),
-    )
+    Ok(map)
   }
 
   pub(crate) fn get_unspent_outputs(&self, _wallet: Wallet) -> Result<BTreeMap<OutPoint, Amount>> {

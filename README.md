@@ -1,13 +1,30 @@
 `ord-ocm`
 =====
-* Added the endpoint `/inscription_by_number/:number`.  
-  To use this endpoint, 1) install rust and build `ord` from source (see [building section](#building)) and then 2) start your `bitcoind` daemon and finally 3) start `ord` server
-  ```
-  sudo ./target/release/ord --chain=<CHAIN> --cookie-file=~/.bitcoin/<COOKIE_FILE> --rpc-url=<RPC_URL><PORT> server
-  ```
-  for `signet`, the cookie file should be `~/.bitcoin/signet/.cookie`, for mainnet  `~/.bitcoin/.cookie`.
+First of all, install rust and build `ord` from source (see [building section](#building)) and then start your `bitcoind` daemon.  
+On the examples we are going to use the `signet` settings, starting by the `bitcoin.conf` file for the bitcoin node:
+```bash
+# ~/.bitcoin/bitcoin.conf
+rpcallowip=127.0.0.1
+txindex=1
+chain=signet
+server=1
 
-* Added the cli command `ord snapshot`.
+[signet]
+rpcport=38332
+```
+
+**New features:**
+* Added the endpoint `/inscription_by_number/:number`  
+  To use this endpoint start the `ord` server
+  ```
+  sudo ./target/release/ord -s --cookie-file ~/.bitcoin/signet/.cookie --rpc-url 127.0.0.1:38332 server
+  ```
+
+* Added the cli command `ord snapshot`  
+  To use this cli run
+  ```
+  sudo ./target/release/ord -s --cookie-file ~/.bitcoin/signet/.cookie --rpc-url 127.0.0.1:38332 snapshot > inscriptions_snapshot.csv
+  ```
 
 `ord`
 =====
