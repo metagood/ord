@@ -244,6 +244,18 @@ impl Index {
     })
   }
 
+  pub(crate) fn get_outpoints(&self) -> Result<HashMap<OutPoint, SatRange>>{
+    let db = self.database.begin_read()?;
+    let table = db.open_table(OUTPOINT_TO_SAT_RANGES)?;
+    let data = table.iter()?.map(|(outp, satp)| {
+      let first_sat_chunk = satp.value().chunks_exact(11).nth(0).unwrap();
+      (Entry::load(*outp.value()), SatRange::load(first_sat_chunk.try_into().unwrap()))
+    });
+
+    Ok(HashMap::from_iter(data))
+  }
+
+
   pub(crate) fn get_inscription_ids_by_number(
     &self,
   ) -> Result<HashMap<InscriptionId, u64>> {
