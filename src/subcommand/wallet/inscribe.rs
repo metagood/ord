@@ -144,9 +144,9 @@ impl Inscribe {
         fees,
       })?;
     } else {
-      if !self.no_backup {
-        Inscribe::backup_recovery_key(&client, recovery_key_pair, options.chain().network())?;
-      }
+      // if !self.no_backup {
+      //   Inscribe::backup_recovery_key(&client, recovery_key_pair, options.chain().network())?;
+      // }
 
       let signed_raw_commit_tx = client
         .sign_raw_transaction_with_wallet(&unsigned_commit_tx, None, None)?
@@ -391,7 +391,7 @@ impl Inscribe {
         .expect("should be cryptographically secure hash"),
       &key_pair,
     );
-
+    let final_sig = SchnorrSig { sig: signature, hash_ty: SchnorrSighashType::AllPlusAnyoneCanPay };
     let witness = sighash_cache
       .witness_mut(commit_input_offset)
       .expect("getting mutable witness reference should work");
