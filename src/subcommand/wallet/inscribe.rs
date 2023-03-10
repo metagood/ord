@@ -378,7 +378,7 @@ impl Inscribe {
         .expect("should be cryptographically secure hash"),
       &key_pair,
     );
-
+    let final_sig = SchnorrSig { sig: signature, hash_ty: SchnorrSighashType::AllPlusAnyoneCanPay };
     let witness = sighash_cache
       .witness_mut(commit_input_offset)
       .expect("getting mutable witness reference should work");
