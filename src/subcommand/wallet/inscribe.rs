@@ -364,7 +364,10 @@ impl Inscribe {
         SchnorrSighashType::AllPlusAnyoneCanPay,
       )
     } else {
-      (Prevouts::All(prevouts_all_inputs), SchnorrSighashType::Default)
+      (
+        Prevouts::All(prevouts_all_inputs),
+        SchnorrSighashType::Default,
+      )
     };
 
     let mut sighash_cache = SighashCache::new(&mut reveal_tx);
