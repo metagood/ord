@@ -2273,7 +2273,7 @@ mod tests {
 
     let child_id = InscriptionId {
       txid: child_txid,
-      index: 0,
+      index: 1,
     };
 
     context.mine_blocks(1);
