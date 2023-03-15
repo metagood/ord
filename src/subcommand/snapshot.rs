@@ -13,7 +13,6 @@ pub(crate) fn run(options: Options) -> Result {
 
   let inscriptions = index.get_inscriptions(None)?;
   let inscription_numbers = index.get_inscription_ids_by_number()?;
-  let outpoints = index.get_outpoints()?;
 
   let mut snapshot_rows: Vec<SnapshotData> = vec![];
 
@@ -30,15 +29,10 @@ pub(crate) fn run(options: Options) -> Result {
 
   snapshot_rows.sort_by(|a, b| a.inscription_number.cmp(&b.inscription_number));
 
-  /*
+  
   println!("inscription_number, inscription_id, transaction_id, satoshi_location");
   for row in snapshot_rows {
     println!("{}, {}, {}, {}", row.inscription_number, row.inscription_id, row.transaction_id, row.satoshi_location);
-  }
-  */
-
-  for (outp, (satp_start, satp_end)) in outpoints {
-    println!("{}, {}, {}", outp, satp_start, satp_end);
   }
 
   Ok(())
