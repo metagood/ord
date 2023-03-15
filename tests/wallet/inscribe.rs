@@ -1,3 +1,5 @@
+// use crate::Index;
+
 use super::*;
 
 #[test]
@@ -403,6 +405,62 @@ fn inscribe_with_no_limit() {
 }
 
 #[test]
+fn debug(){
+  let rpc_server = test_bitcoincore_rpc::spawn();
+  let new_wallet = create_wallet(&rpc_server);
+  rpc_server.mine_blocks(1);
+
+  let inscription1 = CommandBuilder::new("wallet inscribe file1.png")
+    .write("file1.png", [1; 520])
+    .rpc_server(&rpc_server)
+    .output::<Inscribe>();
+
+  let inscription1_id = &inscription1.inscription;
+
+  let mem = rpc_server.mempool();
+  for tx in mem {
+    println!("txid: {}", tx.txid());
+    for input in tx.input {
+      println!("witness: {:?}", input.witness);
+    }
+  }
+
+  rpc_server.mine_blocks(1);
+  let child_inscription_cmd = format!("wallet inscribe --parent {inscription1_id} file2.png");
+  println!("{}", &child_inscription_cmd);
+
+  let inscription2 = CommandBuilder::new(child_inscription_cmd)
+    .write("file2.png", [1; 520])
+    .rpc_server(&rpc_server)
+    .output::<Inscribe>();
+
+  let mem = rpc_server.mempool();
+  for tx in mem {
+    println!("txid: {}", tx.txid());
+    for input in tx.input {
+      println!("witness: {:?}", input.witness);
+    }
+  }
+
+  rpc_server.mine_blocks(1);
+
+  println!("inscription1 {:?}", inscription1.inscription);
+  println!("inscription2 {:?}", inscription2.inscription);
+
+  TestServer::spawn_with_args(&rpc_server, &[]).assert_response_regex(
+    format!("/inscription/{}", inscription2.inscription),
+    format!(".*"),
+  );
+  println!("First api call worked.");
+
+  TestServer::spawn_with_args(&rpc_server, &[]).assert_response_regex(
+    format!("/inscription/{}", inscription1.inscription),
+    format!(".*"),
+  );
+  println!("Second api call worked.");
+}
+
+#[test]
 fn inscribe_with_parent_inscription() {
   let rpc_server = test_bitcoincore_rpc::spawn();
   create_wallet(&rpc_server);
@@ -411,8 +469,9 @@ fn inscribe_with_parent_inscription() {
   let parent_id = CommandBuilder::new("wallet inscribe --fee-rate 1.0 parent.png")
     .write("parent.png", [1; 520])
     .rpc_server(&rpc_server)
-    .output::<Inscribe>()
-    .inscription;
+    .output::<Inscribe>();
+
+  let parent_id = parent.inscription;
 
   rpc_server.mine_blocks(1);
 
@@ -428,7 +487,10 @@ fn inscribe_with_parent_inscription() {
 
   assert_eq!(parent_id, child_output.parent.unwrap());
 
-  rpc_server.mine_blocks(1);
+  // TestServer::spawn_with_args(&rpc_server, &[]).assert_response_regex(
+  //   format!("/inscription/{parent_id}"),
+  //   format!(".*"),
+  // );
 
   TestServer::spawn_with_args(&rpc_server, &[]).assert_response_regex(
     format!("/inscription/{}", child_output.inscription),
