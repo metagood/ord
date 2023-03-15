@@ -1,4 +1,4 @@
-`ord-ocm`
+`ord`
 =====
 First of all, install rust and build `ord` from source (see [building section](#building)) and then start your `bitcoind` daemon.  
 On the examples we are going to use the `signet` settings, starting by the `bitcoin.conf` file for the bitcoin node:
