@@ -782,7 +782,7 @@ impl Server {
     let json_result: Result<Value, serde_json::Error> = serde_json::from_slice(&inscription.body().unwrap());
     let json: Value = json_result.unwrap();
 
-    if !json.as_object().unwrap().contains_key("is_ord_pointer") {
+    if !json.as_object().unwrap().contains_key("use_p") {
       return None;
     }
 
@@ -802,7 +802,7 @@ impl Server {
   fn get_url_params_from_json_value(json: Value) -> String {
     let mut params_str = String::new();
 
-    if let Some(url_params_field) = json.get("url_params") {
+    if let Some(url_params_field) = json.get("params") {
       if let Some(url_params) = url_params_field.as_array() {
         let param_strs: Vec<&str> = url_params.into_iter().map(|v| v.as_str().unwrap()).collect();
         params_str = param_strs.join("&");
@@ -2641,7 +2641,7 @@ mod tests {
         Witness::new(),
         inscription_with_parent(
           "application/json",
-          "{\"is_ord_pointer\":1,\"url_params\":[\"tokenID=69\"]}",
+          "{\"use_p\":1,\"params\":[\"tokenID=69\"]}",
           parent_inscription
         ).to_witness()
       ],
@@ -2685,7 +2685,7 @@ mod tests {
         Witness::new(),
         inscription_with_parent(
           "application/json",
-          "{\"is_ord_pointer\":1}",
+          "{\"use_p\":1}",
           parent_inscription
         ).to_witness()
       ],
