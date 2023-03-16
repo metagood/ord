@@ -19,7 +19,7 @@ use {
     http::{header, HeaderMap, HeaderValue, StatusCode, Uri},
     response::{IntoResponse, Redirect, Response},
     routing::get,
-    Router, TypedHeader,
+    Router, TypedHeader,Json
   },
   axum_server::Handle,
   rust_embed::RustEmbed,
@@ -148,6 +148,7 @@ impl Server {
         .route("/", get(Self::home))
         .route("/block-count", get(Self::block_count))
         .route("/block/:query", get(Self::block))
+        .route("/block_json/:query", get(Self::block_json))
         .route("/bounties", get(Self::bounties))
         .route("/clock", get(Self::clock))
         .route("/content/:inscription_id", get(Self::content))
@@ -478,6 +479,17 @@ impl Server {
 
   async fn install_script() -> Redirect {
     Redirect::to("https://raw.githubusercontent.com/casey/ord/master/install.sh")
+  }
+
+  async fn block_json(
+    Extension(index): Extension<Arc<Index>>,
+    Path(DeserializeFromStr(height)): Path<DeserializeFromStr<u64>>
+  ) -> ServerResult<Json<Block>> {
+    let block = index
+      .get_block_by_height(height)?
+      .ok_or_not_found(|| format!("block {height}"))?;
+
+    Ok(Json(block))
   }
 
   async fn block(

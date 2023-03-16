@@ -1,5 +1,3 @@
-use std::ptr::null;
-
 use super::*;
 
 #[derive(Debug, Parser)]
@@ -14,9 +12,9 @@ impl Block {
     index.update()?;
 
     if let Some(block) = index.get_block_by_height(self.height)?{
-        print_json(block)?;
+      print_json(block)?;
     } else {
-        print_json({})?;
+      print_json({})?;
     }
 
     Ok(())

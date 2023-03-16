@@ -1,6 +1,6 @@
 use super::*;
 
-pub(crate) fn run(options: Options) -> Result {
+pub(crate) fn run(_options: Options) -> Result {
   println!("[subcommand::query::inscription]: Not implemented yet.");
   /*
   let index = Index::open(&options)?;
