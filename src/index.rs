@@ -208,8 +208,8 @@ impl Index {
         tx.open_table(INSCRIPTION_NUMBER_TO_INSCRIPTION_ID)?;
         tx.open_table(OUTPOINT_TO_VALUE)?;
         tx.open_table(SATPOINT_TO_INSCRIPTION_ID)?;
-        tx.open_table(SAT_TO_INSCRIPTION_ID)?; // empty
-        tx.open_table(SAT_TO_SATPOINT)?; // empty
+        tx.open_table(SAT_TO_INSCRIPTION_ID)?;
+        tx.open_table(SAT_TO_SATPOINT)?;
         tx.open_table(WRITE_TRANSACTION_STARTING_BLOCK_COUNT_TO_TIMESTAMP)?;
 
         tx.open_table(STATISTIC_TO_COUNT)?

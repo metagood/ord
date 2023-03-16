@@ -20,11 +20,15 @@ rpcport=38332
   sudo ./target/release/ord -s --cookie-file ~/.bitcoin/signet/.cookie --rpc-url 127.0.0.1:38332 server
   ```
 
-* Added the cli command `ord snapshot`  
+* Added the endpoint `/block_json/:height`
+
+* Added the snapshot cli command `ord snapshot`  
   To use this cli run
   ```
   sudo ./target/release/ord -s --cookie-file ~/.bitcoin/signet/.cookie --rpc-url 127.0.0.1:38332 snapshot > inscriptions_snapshot.csv
   ```
+
+* Added a set of queries cli commands `ord query <sat|block|inscription>`
 
 `ord`
 =====

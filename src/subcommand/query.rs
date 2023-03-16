@@ -1,7 +1,7 @@
 use super::*;
 
-pub mod inscription;
-pub mod sat;
+pub(crate) mod inscription;
+pub(crate) mod sat;
 pub(crate) mod block;
 
 #[derive(Debug, Parser)]

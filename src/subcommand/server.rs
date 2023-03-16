@@ -19,7 +19,7 @@ use {
     http::{header, HeaderMap, HeaderValue, StatusCode, Uri},
     response::{IntoResponse, Redirect, Response},
     routing::get,
-    Router, TypedHeader,Json
+    Router, TypedHeader, Json
   },
   axum_server::Handle,
   rust_embed::RustEmbed,
