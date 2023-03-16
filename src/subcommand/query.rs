@@ -1,22 +1,25 @@
 use super::*;
 
+pub mod inscription;
+pub mod sat;
+pub(crate) mod block;
+
 #[derive(Debug, Parser)]
 pub(crate) enum Query {
-  InscriptionId,
-  InscriptionNumber,
+  #[clap(about = "Display information about an inscription")]
+  Inscription,
+  #[clap(about = "Display information about a satoshi")]
   Sat,
-  Block,
+  #[clap(about = "Display information about a block")]
+  Block(block::Block),
 }
 
 impl Query {
   pub(crate) fn run(self, options: Options) -> Result {
     match self {
-        Self::InscriptionId => println!("Query by inscription id"),
-        Self::InscriptionNumber => println!("Query by inscription number"),
-        Self::Sat => println!("Query by sat number"),
-        Self::Block => println!("Query by block number"),
+      Self::Inscription => inscription::run(options),
+      Self::Sat => sat::run(options),
+      Self::Block(block) => block.run(options),
     }
-
-    Ok(())
   }
 }
