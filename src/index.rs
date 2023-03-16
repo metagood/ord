@@ -31,6 +31,35 @@ macro_rules! define_table {
   };
 }
 
+/*
+[Block 1]
+  1. tx_hash_1
+    i1. tx_hash_1_i1 (inscription 1 creation)
+    o1. tx_hash_1_o1 (inscription 1 transfer)
+  
+  2..100
+
+[Block 2]
+  1..50
+  51. tx_hash_51
+    i1. tx_hash_51_i1 (spends tx_hash_1_o1)
+    o1. tx_hash_51_o1 
+
+
+GET /inscription_by_block/:block_height
+[
+{
+  tx_id:
+  vout:
+  sat_index
+  inscription_id: SATPOINT_TO_INSCRIPTION_ID.get(satpoint)
+}
+...
+]
+
+const inscriptionId = SATPOINT_TO_INSCRIPTION_ID.has(satpoint)
+*/
+
 define_table! { HEIGHT_TO_BLOCK_HASH, u64, &BlockHashValue }
 define_table! { INSCRIPTION_ID_TO_INSCRIPTION_ENTRY, &InscriptionIdValue, InscriptionEntryValue }
 define_table! { INSCRIPTION_ID_TO_SATPOINT, &InscriptionIdValue, &SatPointValue }
@@ -205,6 +234,7 @@ impl Index {
         tx.open_table(HEIGHT_TO_BLOCK_HASH)?;
         tx.open_table(INSCRIPTION_ID_TO_INSCRIPTION_ENTRY)?;
         tx.open_table(INSCRIPTION_ID_TO_SATPOINT)?;
+        // tx.open_table(INSCRIPTION_ID_TO_SATPOINT_HISTORY)?; // INSCRIPTION_ID_TO_SATPOINTS id -> [satpoint]
         tx.open_table(INSCRIPTION_NUMBER_TO_INSCRIPTION_ID)?;
         tx.open_table(OUTPOINT_TO_VALUE)?;
         tx.open_table(SATPOINT_TO_INSCRIPTION_ID)?;

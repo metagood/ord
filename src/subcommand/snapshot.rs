@@ -11,6 +11,18 @@ pub(crate) fn run(options: Options) -> Result {
   let index = Index::open(&options)?;
   index.update()?;
 
+  let data = index.get_inscriptions(None)?;
+
+  print_json(data);
+
+  Ok(())
+}
+
+/*
+pub(crate) fn run(options: Options) -> Result {
+  let index = Index::open(&options)?;
+  index.update()?;
+
   let inscriptions = index.get_inscriptions(None)?;
   let inscription_numbers = index.get_inscription_ids_by_number()?;
 
@@ -37,3 +49,4 @@ pub(crate) fn run(options: Options) -> Result {
 
   Ok(())
 }
+*/
