@@ -148,7 +148,7 @@ pub fn main() {
   .write(true)
   .append(true)
   .create(true)
-  .open("inscription_satpoint.logs")
+  .open("inscription_satpoint.txt")
   .unwrap();
 
   env_logger::builder()
