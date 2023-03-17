@@ -249,7 +249,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
 
     match flotsam.origin {
       Origin::Old(old_satpoint) => {
-        self.satpoint_to_id.remove(&old_satpoint.store())?;
+        //self.satpoint_to_id.remove(&old_satpoint.store())?;
       }
       Origin::New((fee, parent)) => {
         self
