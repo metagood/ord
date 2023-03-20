@@ -589,4 +589,17 @@ impl Api for Server {
         .collect::<Vec<String>>(),
     )
   }
+
+  fn wallet_process_psbt(
+    &self,
+    psbt: String,
+    _sign: Option<bool>,
+    _sighash_type: Option<()>,
+    _bip32derivs: Option<bool>,
+  ) -> Result<WalletProcessPsbtResult, jsonrpc_core::Error> {
+    Ok(WalletProcessPsbtResult {
+      psbt,
+      complete: true,
+    })
+  }
 }

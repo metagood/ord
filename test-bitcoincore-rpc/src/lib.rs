@@ -18,7 +18,7 @@ use {
     GetNetworkInfoResult, GetRawTransactionResult, GetTransactionResult,
     GetTransactionResultDetail, GetTransactionResultDetailCategory, GetWalletInfoResult,
     ImportDescriptors, ImportMultiResult, ListDescriptorsResult, ListTransactionResult,
-    ListUnspentResultEntry, LoadWalletResult, SignRawTransactionResult, Timestamp, WalletTxInfo,
+    ListUnspentResultEntry, LoadWalletResult, SignRawTransactionResult, Timestamp, WalletTxInfo, WalletProcessPsbtResult,
   },
   jsonrpc_core::{IoHandler, Value},
   jsonrpc_http_server::{CloseHandle, ServerBuilder},

@@ -151,4 +151,14 @@ pub trait Api {
 
   #[rpc(name = "listwallets")]
   fn list_wallets(&self) -> Result<Vec<String>, jsonrpc_core::Error>;
+
+  #[rpc(name = "walletprocesspsbt")]
+
+  fn wallet_process_psbt(
+    &self,
+    psbt: String,
+    _sign: Option<bool>,
+    _sighash_type: Option<()>,
+    _bip32derivs: Option<bool>,
+  ) -> Result<WalletProcessPsbtResult, jsonrpc_core::Error>;
 }
