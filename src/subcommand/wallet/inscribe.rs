@@ -169,7 +169,7 @@ impl Inscribe {
             .wallet_process_psbt(
               &reveal_psbt.to_string(),
               None,
-              Some(SigHashType::from(bitcoin::blockdata::transaction::EcdsaSighashType::SinglePlusAnyoneCanPay)), // TODO: use SchnorrSighashType
+              Some(SigHashType::from(bitcoin::blockdata::transaction::EcdsaSighashType::AllPlusAnyoneCanPay)), // TODO: use SchnorrSighashType
               None,
             )?
             .psbt,
