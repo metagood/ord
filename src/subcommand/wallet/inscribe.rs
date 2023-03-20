@@ -9,6 +9,7 @@ use {
       self, constants::SCHNORR_SIGNATURE_SIZE, rand, schnorr::Signature, Secp256k1, XOnlyPublicKey,
     },
     util::key::PrivateKey,
+    util::psbt::{self, Input, PartiallySignedTransaction, PsbtSighashType},
     util::sighash::{Prevouts, SighashCache},
     util::taproot::{ControlBlock, LeafVersion, TapLeafHash, TaprootBuilder},
     PackedLockTime, SchnorrSighashType, Witness,
@@ -76,7 +77,7 @@ impl Inscribe {
       .map(Ok)
       .unwrap_or_else(|| get_change_address(&client))?;
 
-    let (unsigned_commit_tx, reveal_tx, recovery_key_pair) =
+    let (unsigned_commit_tx, reveal_psbt, recovery_key_pair) =
       Inscribe::create_inscription_transactions(
         self.satpoint,
         inscription,
@@ -89,6 +90,8 @@ impl Inscribe {
         self.fee_rate,
         self.no_limit,
       )?;
+
+    let reveal_tx = reveal_psbt.extract_tx();
 
     utxos.insert(
       reveal_tx.input[0].previous_output,
@@ -155,7 +158,7 @@ impl Inscribe {
     commit_fee_rate: FeeRate,
     reveal_fee_rate: FeeRate,
     no_limit: bool,
-  ) -> Result<(Transaction, Transaction, TweakedKeyPair)> {
+  ) -> Result<(Transaction, PartiallySignedTransaction, TweakedKeyPair)> {
     let satpoint = if let Some(satpoint) = satpoint {
       satpoint
     } else {
@@ -260,6 +263,8 @@ impl Inscribe {
       bail!("commit transaction output would be dust");
     }
 
+    let mut reveal_psbt = Self::build_reveal_psbt(reveal_tx.clone());
+
     let mut sighash_cache = SighashCache::new(&mut reveal_tx);
 
     let signature_hash = sighash_cache
@@ -284,6 +289,8 @@ impl Inscribe {
     witness.push(reveal_script);
     witness.push(&control_block.serialize());
 
+    reveal_psbt.inputs[0].final_script_witness = Some(witness.clone());
+
     let recovery_key_pair = key_pair.tap_tweak(&secp256k1, taproot_spend_info.merkle_root());
 
     let (x_only_pub_key, _parity) = recovery_key_pair.to_inner().x_only_public_key();
@@ -295,7 +302,7 @@ impl Inscribe {
       commit_tx_address
     );
 
-    let reveal_weight = reveal_tx.weight();
+    let reveal_weight = reveal_psbt.clone().extract_tx().weight();
 
     if !no_limit && reveal_weight > MAX_STANDARD_TX_WEIGHT.try_into().unwrap() {
       bail!(
@@ -303,7 +310,21 @@ impl Inscribe {
       );
     }
 
-    Ok((unsigned_commit_tx, reveal_tx, recovery_key_pair))
+    Ok((unsigned_commit_tx, reveal_psbt, recovery_key_pair))
+  }
+
+  fn build_reveal_psbt(reveal_tx: Transaction) -> PartiallySignedTransaction {
+    let mut psbt = PartiallySignedTransaction::from_unsigned_tx(reveal_tx.clone()).unwrap();
+    psbt.inputs = vec![Input {
+      sighash_type: Some(PsbtSighashType::from(SchnorrSighashType::Default)),
+      ..Default::default()
+    }];
+    psbt.outputs = vec![psbt::Output {
+      witness_script: Some(reveal_tx.output[0].clone().script_pubkey),
+      ..Default::default()
+    }];
+
+    psbt
   }
 
   fn backup_recovery_key(
@@ -353,7 +374,7 @@ impl Inscribe {
       version: 1,
     };
 
-    let fee = {
+    let estimated_fee = {
       let mut reveal_tx = reveal_tx.clone();
 
       reveal_tx.input[0].witness.push(
@@ -367,7 +388,7 @@ impl Inscribe {
       fee_rate.fee(reveal_tx.vsize())
     };
 
-    (reveal_tx, fee)
+    (reveal_tx, estimated_fee)
   }
 }
 
@@ -382,27 +403,29 @@ mod tests {
     let commit_address = change(0);
     let reveal_address = recipient();
 
-    let (commit_tx, reveal_tx, _private_key) = Inscribe::create_inscription_transactions(
-      Some(satpoint(1, 0)),
-      inscription,
-      BTreeMap::new(),
-      Network::Bitcoin,
-      utxos.into_iter().collect(),
-      [commit_address, change(1)],
-      reveal_address,
-      FeeRate::try_from(1.0).unwrap(),
-      FeeRate::try_from(1.0).unwrap(),
-      false,
-    )
-    .unwrap();
+    let (unsigned_commit_tx, reveal_psbt, _private_key) =
+      Inscribe::create_inscription_transactions(
+        Some(satpoint(1, 0)),
+        inscription,
+        BTreeMap::new(),
+        Network::Bitcoin,
+        utxos.into_iter().collect(),
+        [commit_address, change(1)],
+        reveal_address,
+        FeeRate::try_from(1.0).unwrap(),
+        FeeRate::try_from(1.0).unwrap(),
+        false,
+      )
+      .unwrap();
 
     #[allow(clippy::cast_possible_truncation)]
     #[allow(clippy::cast_sign_loss)]
-    let fee = Amount::from_sat((1.0 * (reveal_tx.vsize() as f64)).ceil() as u64);
+    let reveal_fee =
+      Amount::from_sat((1.0 * (reveal_psbt.clone().extract_tx().vsize() as f64)).round() as u64);
 
     assert_eq!(
-      reveal_tx.output[0].value,
-      20000 - fee.to_sat() - (20000 - commit_tx.output[0].value),
+      reveal_psbt.extract_tx().output[0].value,
+      20000 - (20000 - unsigned_commit_tx.output[0].value + reveal_fee.to_sat()),
     );
   }
 
@@ -413,7 +436,7 @@ mod tests {
     let commit_address = change(0);
     let reveal_address = recipient();
 
-    let (commit_tx, reveal_tx, _) = Inscribe::create_inscription_transactions(
+    let (commit_tx, reveal_psbt, _) = Inscribe::create_inscription_transactions(
       Some(satpoint(1, 0)),
       inscription,
       BTreeMap::new(),
@@ -428,7 +451,7 @@ mod tests {
     .unwrap();
 
     assert!(commit_tx.is_explicitly_rbf());
-    assert!(reveal_tx.is_explicitly_rbf());
+    assert!(reveal_psbt.extract_tx().is_explicitly_rbf());
   }
 
   #[test]
@@ -526,7 +549,7 @@ mod tests {
     let reveal_address = recipient();
     let fee_rate = 3.3;
 
-    let (commit_tx, reveal_tx, _private_key) = Inscribe::create_inscription_transactions(
+    let (commit_tx, reveal_psbt, _private_key) = Inscribe::create_inscription_transactions(
       satpoint,
       inscription,
       inscriptions,
@@ -557,11 +580,11 @@ mod tests {
 
     let fee = FeeRate::try_from(fee_rate)
       .unwrap()
-      .fee(reveal_tx.vsize())
+      .fee(reveal_psbt.clone().extract_tx().vsize())
       .to_sat();
 
     assert_eq!(
-      reveal_tx.output[0].value,
+      reveal_psbt.extract_tx().output[0].value,
       20_000 - fee - (20_000 - commit_tx.output[0].value),
     );
   }
@@ -588,7 +611,7 @@ mod tests {
     let commit_fee_rate = 3.3;
     let fee_rate = 1.0;
 
-    let (commit_tx, reveal_tx, _private_key) = Inscribe::create_inscription_transactions(
+    let (commit_tx, reveal_psbt, _private_key) = Inscribe::create_inscription_transactions(
       satpoint,
       inscription,
       inscriptions,
@@ -616,6 +639,8 @@ mod tests {
       .unwrap();
 
     assert_eq!(reveal_value, 20_000 - fee);
+
+    let reveal_tx = reveal_psbt.extract_tx();
 
     let fee = FeeRate::try_from(fee_rate)
       .unwrap()
@@ -668,7 +693,7 @@ mod tests {
     let commit_address = change(0);
     let reveal_address = recipient();
 
-    let (_commit_tx, reveal_tx, _private_key) = Inscribe::create_inscription_transactions(
+    let (_commit_tx, reveal_psbt, _private_key) = Inscribe::create_inscription_transactions(
       satpoint,
       inscription,
       BTreeMap::new(),
@@ -682,6 +707,6 @@ mod tests {
     )
     .unwrap();
 
-    assert!(reveal_tx.size() >= MAX_STANDARD_TX_WEIGHT as usize);
+    assert!(reveal_psbt.extract_tx().size() >= MAX_STANDARD_TX_WEIGHT as usize);
   }
 }
