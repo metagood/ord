@@ -241,6 +241,11 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
     self.satpoint_to_id.insert(&new_satpoint, &inscription_id)?;
     self.id_to_satpoint.insert(&inscription_id, &new_satpoint)?;
 
+    let inscription_id = InscriptionId::load(inscription_id);
+    let satpoint = SatPoint::load(new_satpoint);
+
+    log::info!(target: "new_inscription_satpoint", "{}, {}, {}", self.height, satpoint, inscription_id);
+
     Ok(())
   }
 }

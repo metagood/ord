@@ -102,6 +102,8 @@ impl Updater {
 
     let mut uncommitted = 0;
     let mut value_cache = HashMap::new();
+    let mut prev_block: Option<BlockData> = None;
+
     loop {
       let block = match rx.recv() {
         Ok(block) => block,
@@ -113,9 +115,21 @@ impl Updater {
         &mut outpoint_sender,
         &mut value_receiver,
         &mut wtx,
-        block,
+        &block,
         &mut value_cache,
       )?;
+
+      if let Some(prev) = prev_block {
+        log::info!(
+          target: "new_inscription_satpoint",
+          "{{ block_hash: {}, prev_block_hash:{}, tx_count:{} }}",
+          &block.header.block_hash(),
+          &prev.header.block_hash(),
+          &block.txdata.len(),
+        );
+      }
+
+      prev_block = Some(block);
 
       if let Some(progress_bar) = &mut progress_bar {
         progress_bar.inc(1);
@@ -332,7 +346,7 @@ impl Updater {
     outpoint_sender: &mut Sender<OutPoint>,
     value_receiver: &mut Receiver<u64>,
     wtx: &mut WriteTransaction,
-    block: BlockData,
+    block: &BlockData,
     value_cache: &mut HashMap<OutPoint, u64>,
   ) -> Result<()> {
     // If value_receiver still has values something went wrong with the last block
