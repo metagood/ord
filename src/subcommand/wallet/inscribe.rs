@@ -16,7 +16,7 @@ use {
     util::taproot::{ControlBlock, LeafVersion, TapLeafHash, TaprootBuilder},
     PackedLockTime, SchnorrSighashType, Witness,
   },
-  bitcoincore_rpc::bitcoincore_rpc_json::{ SigHashType, ImportDescriptors, Timestamp},
+  bitcoincore_rpc::bitcoincore_rpc_json::{ImportDescriptors, SigHashType, Timestamp},
   bitcoincore_rpc::Client,
   std::collections::BTreeSet,
 };
@@ -154,47 +154,35 @@ impl Inscribe {
         .sign_raw_transaction_with_wallet(&unsigned_commit_tx, None, None)?
         .hex;
 
-      let commit = client
-        .send_raw_transaction(&signed_raw_commit_tx)
-        .context("Failed to send commit transaction")?;
+      let reveal_tx = if self.parent.is_some() {
+        println!("{}", reveal_psbt.to_string());
+        let result = &client.wallet_process_psbt(
+          &reveal_psbt.to_string(),
+          None,
+          Some(SigHashType::from(
+            bitcoin::blockdata::transaction::EcdsaSighashType::AllPlusAnyoneCanPay,
+          )), // TODO: use SchnorrSighashType
+          None,
+        )?;
+        
+        if !result.complete {
+          return Err(anyhow!("Bitcoin Core failed to sign psbt"));
+        }
 
-      log::debug!(
-        "partially signed reveal tx: {}",
-        hex::encode(serialize(&reveal_tx))
-      );
-
-      let reveal = if self.parent.is_some() {
-        let updated_psbt = PartiallySignedTransaction::from_str(
-          &client
-            .wallet_process_psbt(
-              &reveal_psbt.to_string(),
-              None,
-              Some(SigHashType::from(bitcoin::blockdata::transaction::EcdsaSighashType::AllPlusAnyoneCanPay)), // TODO: use SchnorrSighashType
-              None,
-            )?
-            .psbt,
-        )
-        .unwrap();
+        let updated_psbt = PartiallySignedTransaction::from_str(&result.psbt).unwrap();
 
         dbg!(&updated_psbt);
 
-        let reveal_tx = updated_psbt.extract_tx();
+        updated_psbt.extract_tx()
+      } else { reveal_tx };
 
-        // TODO: there is a bug here, the fully signed reveal TX no longer contains
-        // the inscription data when backup key is in bitcoin core wallet
-        log::debug!(
-          "fully signed reveal tx: {}",
-          hex::encode(serialize(&reveal_tx))
-        );
+      let commit = client
+          .send_raw_transaction(&signed_raw_commit_tx)
+          .context("Failed to send commit transaction")?;
 
-        client
+      let reveal =  client
           .send_raw_transaction(&reveal_tx)
-          .context("Failed to send reveal transaction")?
-      } else {
-        client
-          .send_raw_transaction(&reveal_tx)
-          .context("Failed to send reveal transaction")?
-      };
+          .context("Failed to send reveal transaction")?;
 
       let inscription = InscriptionId {
         txid: reveal,
