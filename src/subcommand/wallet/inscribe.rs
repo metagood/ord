@@ -16,7 +16,7 @@ use {
     util::taproot::{ControlBlock, LeafVersion, TapLeafHash, TaprootBuilder},
     PackedLockTime, SchnorrSighashType, Witness,
   },
-  bitcoincore_rpc::bitcoincore_rpc_json::{ImportDescriptors, Timestamp},
+  bitcoincore_rpc::bitcoincore_rpc_json::{ SigHashType, ImportDescriptors, Timestamp},
   bitcoincore_rpc::Client,
   std::collections::BTreeSet,
 };
@@ -166,10 +166,17 @@ impl Inscribe {
       let reveal = if self.parent.is_some() {
         let updated_psbt = PartiallySignedTransaction::from_str(
           &client
-            .wallet_process_psbt(&reveal_psbt.to_string(), None, None, None)?
+            .wallet_process_psbt(
+              &reveal_psbt.to_string(),
+              None,
+              Some(SigHashType::from(bitcoin::blockdata::transaction::EcdsaSighashType::SinglePlusAnyoneCanPay)), // TODO: use SchnorrSighashType
+              None,
+            )?
             .psbt,
         )
         .unwrap();
+
+        dbg!(&updated_psbt);
 
         let reveal_tx = updated_psbt.extract_tx();
 
