@@ -183,7 +183,6 @@ fn inscribe_child() {
   rpc_client.generate_to_address(101, &address).unwrap();
 
   fs::write(ord_data_dir.as_path().join("parent.txt"), "Pater").unwrap();
-  
 
   #[derive(Deserialize, Debug)]
   struct Output {
@@ -204,19 +203,78 @@ fn inscribe_child() {
       .unwrap_or_else(|err| panic!("Failed to deserialize JSON: {err}\n{s}")),
     Err(e) => panic!("error inscribing parent: {}", e),
   };
+  let parent_id = output.inscription;
 
   rpc_client.generate_to_address(1, &address).unwrap();
 
   fs::write(ord_data_dir.as_path().join("child.txt"), "Filius").unwrap();
-  match ord(
+  let output: Output = match ord(
     &cookiefile,
     &ord_data_dir,
     rpc_port,
-    &["wallet", "inscribe", "--parent", &output.inscription, "child.txt"],
+    &[
+      "wallet",
+      "inscribe",
+      "--parent",
+      &parent_id,
+      "child.txt",
+    ],
   ) {
-    Ok(s) => println!("{}", s),
+    Ok(s) => serde_json::from_str(&s)
+      .unwrap_or_else(|err| panic!("Failed to deserialize JSON: {err}\n{s}")),
     Err(e) => panic!("error inscribing child with parent: {}", e),
+  };
+
+  let child_id = output.inscription;
+  let ord_port = 8080;
+  rpc_client.generate_to_address(1, &address).unwrap();
+
+  let _ord_server = KillOnDrop(
+    Command::new(executable_path("ord"))
+      .env("ORD_INTEGRATION_TEST", "1")
+      .stdin(Stdio::null())
+      .stdout(Stdio::piped())
+      .stderr(Stdio::piped())
+      .current_dir(&ord_data_dir)
+      .arg("--regtest")
+      .arg("--data-dir")
+      .arg(ord_data_dir.as_path())
+      .arg("--rpc-url")
+      .arg(&format!("127.0.0.1:{}", rpc_port))
+      .arg("--cookie-file")
+      .arg(cookiefile.to_str().unwrap())
+      .arg("server")
+      .arg("--http-port")
+      .arg(&format!("{ord_port}"))
+      .spawn()
+      .expect("failed to spawn `ord server`"),
+  );
+
+  let client = reqwest::blocking::Client::builder()
+    .redirect(reqwest::redirect::Policy::none())
+    .build()
+    .unwrap();
+
+  for i in 0.. {
+    match client
+      .get(format!("http://127.0.0.1:{ord_port}/status"))
+      .send()
+    {
+      Ok(_) => break,
+      Err(err) => {
+        if i == 400 {
+          panic!("server failed to start: {err}");
+        }
+      }
+    }
+
+    thread::sleep(Duration::from_millis(25));
   }
 
-  rpc_client.generate_to_address(1, &address).unwrap();
+  let response = client
+    .get(format!("http://127.0.0.1:{ord_port}/inscription/{child_id}"))
+    .send()
+    .unwrap();
+
+  assert_regex_match!(response.text().unwrap(), &format!(".*parent.*{}", parent_id));
 }

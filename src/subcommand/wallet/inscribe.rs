@@ -14,7 +14,10 @@ use {
     util::taproot::{ControlBlock, LeafVersion, TapLeafHash, TaprootBuilder},
     PackedLockTime, SchnorrSig, SchnorrSighashType, Witness,
   },
-  bitcoincore_rpc::bitcoincore_rpc_json::{ImportDescriptors, SigHashType, Timestamp},
+  bitcoincore_rpc::bitcoincore_rpc_json::{
+    CreateRawTransactionInput, ImportDescriptors, SigHashType, Timestamp,
+    WalletCreateFundedPsbtOptions,
+  },
   bitcoincore_rpc::Client,
   std::collections::BTreeSet,
 };
@@ -71,7 +74,7 @@ impl Inscribe {
 
     let inscriptions = index.get_inscriptions(None)?;
 
-    let (parent, commit_input_offset) = if let Some(parent_id) = self.parent {
+    let (parent_psbt, commit_input_offset) = if let Some(parent_id) = self.parent {
       if let Some(satpoint) = index.get_inscription_satpoint_by_id(parent_id)? {
         if !utxos.contains_key(&satpoint.outpoint) {
           return Err(anyhow!(format!(
@@ -87,7 +90,41 @@ impl Inscribe {
           .nth(satpoint.outpoint.vout.try_into().unwrap())
           .expect("current transaction output");
 
-        (Some((satpoint, tx_out)), 1)
+        let parent_input = CreateRawTransactionInput {
+          txid: satpoint.outpoint.txid,
+          vout: satpoint.outpoint.vout,
+          sequence: None,
+        };
+
+        let outputs = std::iter::once((
+          Address::from_script(&tx_out.script_pubkey, options.chain().network())
+            .unwrap()
+            .to_string(),
+          Amount::from_sat(tx_out.value),
+        ))
+        .collect::<std::collections::HashMap<String, Amount>>();
+
+        let options = WalletCreateFundedPsbtOptions {
+          fee_rate: Some(Amount::ZERO),
+          ..Default::default()
+        };
+
+        let parent_psbt = client
+          .wallet_create_funded_psbt(&[parent_input], &outputs, None, Some(options), None)?
+          .psbt;
+
+        let result = &client.wallet_process_psbt(
+          &parent_psbt.clone().to_string(),
+          None,
+          Some(SigHashType::from(
+            bitcoin::blockdata::transaction::EcdsaSighashType::AllPlusAnyoneCanPay,
+          )), // TODO: use SchnorrSighashType
+          None,
+        )?;
+
+        let updated_psbt = PartiallySignedTransaction::from_str(&result.psbt).unwrap();
+
+        (Some(parent_psbt), 0)
       } else {
         return Err(anyhow!(format!(
           "specified parent {parent_id} does not exist"
@@ -112,7 +149,7 @@ impl Inscribe {
       Inscribe::create_inscription_transactions(
         tmp_client,
         self.satpoint,
-        parent,
+        None,
         inscription,
         inscriptions,
         options.chain().network(),
@@ -137,6 +174,15 @@ impl Inscribe {
 
     let fees =
       Self::calculate_fee(&unsigned_commit_tx, &utxos) + Self::calculate_fee(&reveal_tx, &utxos);
+
+    let joined_psbt = if let Some(parent_psbt) = parent_psbt {
+      dbg!(Some(client.join_psbt(&[
+        parent_psbt.to_string(),
+        reveal_psbt.to_string()
+      ])?))
+    } else {
+      None
+    };
 
     if self.dry_run {
       print_json(Output {
@@ -376,25 +422,25 @@ impl Inscribe {
       )
     };
 
-    dbg!(&reveal_psbt);
-    dbg!(bitcoin::blockdata::transaction::EcdsaSighashType::AllPlusAnyoneCanPay.to_u32());
+    //dbg!(&reveal_psbt);
+    //dbg!(bitcoin::blockdata::transaction::EcdsaSighashType::AllPlusAnyoneCanPay.to_u32());
 
-    let result = &client.wallet_process_psbt(
-      &reveal_psbt.to_string(),
-      None,
-      if parent.is_some() {
-        Some(SigHashType::from(
-          bitcoin::blockdata::transaction::EcdsaSighashType::AllPlusAnyoneCanPay,
-        )) // TODO: use SchnorrSighashType
-      } else {
-        None
-      },
-      None,
-    )?;
+    //let result = &client.wallet_process_psbt(
+    //  &reveal_psbt.to_string(),
+    //  None,
+    //  if parent.is_some() {
+    //    Some(SigHashType::from(
+    //      bitcoin::blockdata::transaction::EcdsaSighashType::AllPlusAnyoneCanPay,
+    //    )) // TODO: use SchnorrSighashType
+    //  } else {
+    //    None
+    //  },
+    //  None,
+    //)?;
 
-    let updated_psbt = PartiallySignedTransaction::from_str(&result.psbt).unwrap();
+    //let updated_psbt = PartiallySignedTransaction::from_str(&result.psbt).unwrap();
 
-    dbg!(updated_psbt.extract_tx());
+    //dbg!(updated_psbt.extract_tx());
 
     let mut sighash_cache = SighashCache::new(&mut reveal_tx);
 
