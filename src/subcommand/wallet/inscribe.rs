@@ -79,7 +79,7 @@ impl Inscribe {
           )));
         }
 
-        let output = index
+        let tx_out = index
           .get_transaction(satpoint.outpoint.txid)?
           .expect("not found")
           .output
@@ -87,7 +87,7 @@ impl Inscribe {
           .nth(satpoint.outpoint.vout.try_into().unwrap())
           .expect("current transaction output");
 
-        (Some((satpoint, output)), 1)
+        (Some((satpoint, tx_out)), 1)
       } else {
         return Err(anyhow!(format!(
           "specified parent {parent_id} does not exist"
@@ -106,8 +106,11 @@ impl Inscribe {
       .map(Ok)
       .unwrap_or_else(|| get_change_address(&client))?;
 
+    let tmp_client = options.bitcoin_rpc_client_for_wallet_command(false)?;
+
     let (unsigned_commit_tx, reveal_psbt, _recovery_key_pair) =
       Inscribe::create_inscription_transactions(
+        tmp_client,
         self.satpoint,
         parent,
         inscription,
@@ -144,13 +147,11 @@ impl Inscribe {
         fees,
       })?;
     } else {
-
       let signed_raw_commit_tx = client
         .sign_raw_transaction_with_wallet(&unsigned_commit_tx, None, None)?
         .hex;
 
       let reveal_tx = if self.parent.is_some() {
-        println!("{}", reveal_psbt.to_string());
         let result = &client.wallet_process_psbt(
           &reveal_psbt.to_string(),
           None,
@@ -163,8 +164,6 @@ impl Inscribe {
         // if !result.complete {
         // return Err(anyhow!("Bitcoin Core failed to sign psbt"));
         // }
-
-        println!("{}", &result.psbt);
 
         let updated_psbt = PartiallySignedTransaction::from_str(&result.psbt).unwrap();
 
@@ -208,6 +207,7 @@ impl Inscribe {
   }
 
   fn create_inscription_transactions(
+    client: Client,
     satpoint: Option<SatPoint>,
     parent: Option<(SatPoint, TxOut)>,
     inscription: Inscription,
@@ -274,13 +274,13 @@ impl Inscribe {
     let commit_tx_address = Address::p2tr_tweaked(taproot_spend_info.output_key(), network);
 
     let (mut inputs, mut outputs, commit_input_offset) =
-      if let Some((satpoint, output)) = parent.clone() {
+      if let Some((parent_satpoint, tx_out)) = parent.clone() {
         (
-          vec![satpoint.outpoint, OutPoint::null()],
+          vec![parent_satpoint.outpoint, OutPoint::null()],
           vec![
             TxOut {
-              script_pubkey: output.script_pubkey,
-              value: output.value,
+              script_pubkey: tx_out.script_pubkey,
+              value: tx_out.value,
             },
             TxOut {
               script_pubkey: destination.script_pubkey(),
@@ -349,6 +349,7 @@ impl Inscribe {
       .checked_sub(fee.to_sat())
       .context("commit transaction output value insufficient to pay transaction fee")?;
 
+    // sanity check fee
     if reveal_tx.output[commit_input_offset].value
       < reveal_tx.output[commit_input_offset]
         .script_pubkey
@@ -374,6 +375,26 @@ impl Inscribe {
         Self::build_reveal_psbt(reveal_tx.clone()),
       )
     };
+
+    dbg!(&reveal_psbt);
+    dbg!(bitcoin::blockdata::transaction::EcdsaSighashType::AllPlusAnyoneCanPay.to_u32());
+
+    let result = &client.wallet_process_psbt(
+      &reveal_psbt.to_string(),
+      None,
+      if parent.is_some() {
+        Some(SigHashType::from(
+          bitcoin::blockdata::transaction::EcdsaSighashType::AllPlusAnyoneCanPay,
+        )) // TODO: use SchnorrSighashType
+      } else {
+        None
+      },
+      None,
+    )?;
+
+    let updated_psbt = PartiallySignedTransaction::from_str(&result.psbt).unwrap();
+
+    dbg!(updated_psbt.extract_tx());
 
     let mut sighash_cache = SighashCache::new(&mut reveal_tx);
 
