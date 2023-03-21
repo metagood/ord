@@ -1,5 +1,3 @@
-use bitcoin::{consensus::serialize, SchnorrSig};
-
 use {
   super::*,
   crate::wallet::Wallet,
@@ -14,7 +12,7 @@ use {
     util::psbt::{self, Input, PartiallySignedTransaction, PsbtSighashType},
     util::sighash::{Prevouts, SighashCache},
     util::taproot::{ControlBlock, LeafVersion, TapLeafHash, TaprootBuilder},
-    PackedLockTime, SchnorrSighashType, Witness,
+    PackedLockTime, SchnorrSig, SchnorrSighashType, Witness,
   },
   bitcoincore_rpc::bitcoincore_rpc_json::{ImportDescriptors, SigHashType, Timestamp},
   bitcoincore_rpc::Client,
@@ -108,7 +106,7 @@ impl Inscribe {
       .map(Ok)
       .unwrap_or_else(|| get_change_address(&client))?;
 
-    let (unsigned_commit_tx, reveal_psbt, recovery_key_pair) =
+    let (unsigned_commit_tx, reveal_psbt, _recovery_key_pair) =
       Inscribe::create_inscription_transactions(
         self.satpoint,
         parent,
@@ -146,9 +144,6 @@ impl Inscribe {
         fees,
       })?;
     } else {
-      if !self.no_backup {
-        Inscribe::backup_recovery_key(&client, recovery_key_pair, options.chain().network())?;
-      }
 
       let signed_raw_commit_tx = client
         .sign_raw_transaction_with_wallet(&unsigned_commit_tx, None, None)?
@@ -164,29 +159,31 @@ impl Inscribe {
           )), // TODO: use SchnorrSighashType
           None,
         )?;
-        
-        if !result.complete {
-          return Err(anyhow!("Bitcoin Core failed to sign psbt"));
-        }
+
+        // if !result.complete {
+        // return Err(anyhow!("Bitcoin Core failed to sign psbt"));
+        // }
+
+        println!("{}", &result.psbt);
 
         let updated_psbt = PartiallySignedTransaction::from_str(&result.psbt).unwrap();
 
-        dbg!(&updated_psbt);
-
-        updated_psbt.extract_tx()
-      } else { reveal_tx };
+        dbg!(updated_psbt.extract_tx())
+      } else {
+        reveal_tx
+      };
 
       let commit = client
-          .send_raw_transaction(&signed_raw_commit_tx)
-          .context("Failed to send commit transaction")?;
+        .send_raw_transaction(&signed_raw_commit_tx)
+        .context("Failed to send commit transaction")?;
 
-      let reveal =  client
-          .send_raw_transaction(&reveal_tx)
-          .context("Failed to send reveal transaction")?;
+      let reveal = client
+        .send_raw_transaction(&reveal_tx)
+        .context("Failed to send reveal transaction")?;
 
       let inscription = InscriptionId {
         txid: reveal,
-        index: commit_input_offset as u32,
+        index: 0,
       };
 
       print_json(Output {
@@ -473,7 +470,7 @@ impl Inscribe {
 
     psbt
   }
-  fn backup_recovery_key(
+  fn _backup_recovery_key(
     client: &Client,
     recovery_key_pair: TweakedKeyPair,
     network: Network,
