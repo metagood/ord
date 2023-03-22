@@ -144,9 +144,9 @@ impl Inscribe {
         fees,
       })?;
     } else {
-      // if !self.no_backup {
-      //   Inscribe::backup_recovery_key(&client, recovery_key_pair, options.chain().network())?;
-      // }
+      if !self.no_backup {
+        Inscribe::backup_recovery_key(&client, recovery_key_pair, options.chain().network())?;
+      }
 
       let signed_raw_commit_tx = client
         .sign_raw_transaction_with_wallet(&unsigned_commit_tx, None, None)?
