@@ -40,7 +40,13 @@ impl Inscription {
   }
 
   pub(crate) fn from_transaction(tx: &Transaction) -> Option<Inscription> {
-    InscriptionParser::parse(&tx.input.get(0)?.witness).ok()
+    for input in &tx.input {
+      if let Some(inscription) = Inscription::from_tx_input(input) {
+        return Some(inscription);
+      }
+    }
+
+    None
   }
 
   pub(crate) fn from_tx_input(tx_in: &TxIn) -> Option<Inscription> {
@@ -612,6 +618,7 @@ mod tests {
   }
 
   #[test]
+  #[ignore] // we need to do this now for parent-child relationships
   fn do_not_extract_from_second_input() {
     let tx = Transaction {
       version: 0,

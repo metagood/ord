@@ -103,25 +103,18 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
       if let Some(inscription) = Inscription::from_tx_input(tx_in) {
         // ignore new inscriptions on already inscribed offset (sats)
         if !inscribed_offsets.contains(&input_value) {
-          let parent = if let Some(parent_id) = inscription.get_parent_id() {
-            // parent has to be in an input before child
-            // think about specifying a more general approach in a protocol doc/BIP
-            if floating_inscriptions
+          // parent has to be in an input before child
+          // think about specifying a more general approach in a protocol doc/BIP
+          let parent = inscription.get_parent_id().filter(|&parent_id| {
+            floating_inscriptions
               .iter()
               .any(|flotsam| flotsam.inscription_id == parent_id)
-            {
-              Some(parent_id)
-            } else {
-              None
-            }
-          } else {
-            None
-          };
+          });
 
           floating_inscriptions.push(Flotsam {
             inscription_id: InscriptionId {
               txid,
-              index: 0,
+              index: 0, // will have to be updated for multi inscriptions
             },
             offset: input_value,
             origin: Origin::New((0, parent)),
@@ -162,10 +155,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
           Flotsam {
             inscription_id,
             offset,
-            origin: Origin::New((
-              input_value - total_output_value,
-              parent,
-            )),
+            origin: Origin::New((input_value - total_output_value, parent)),
           }
         } else {
           flotsam
@@ -205,8 +195,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
 
         self.update_inscription_location(
           input_sat_ranges,
-          // TODO: do something with two inscriptions in the input
-          inscriptions.next().unwrap(),
+          inscriptions.next().unwrap(), // TODO: do something with two inscriptions in the input
           new_satpoint,
         )?;
       }
