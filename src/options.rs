@@ -173,7 +173,12 @@ impl Options {
     Ok(client)
   }
 
-  pub(crate) fn bitcoin_rpc_client_for_wallet_command(&self, create: bool) -> Result<Client> {
+  pub(crate) fn bitcoin_rpc_client_for_wallet_command(&self, create: bool, has_parent: bool) -> Result<Client> {
+    if has_parent {
+      println!("in bitcoin_rpc_client_for_wallet_command fn");
+      println!("self.wallet: {}", self.wallet);
+    }
+
     let client = self.bitcoin_rpc_client()?;
 
     const MIN_VERSION: usize = 240000;
@@ -189,6 +194,7 @@ impl Options {
 
     if !create {
       if !client.list_wallets()?.contains(&self.wallet) {
+        println!("loading wallet...");
         client.load_wallet(&self.wallet)?;
       }
 
