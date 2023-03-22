@@ -18,7 +18,8 @@ use {
     GetNetworkInfoResult, GetRawTransactionResult, GetTransactionResult,
     GetTransactionResultDetail, GetTransactionResultDetailCategory, GetWalletInfoResult,
     ImportDescriptors, ImportMultiResult, ListDescriptorsResult, ListTransactionResult,
-    ListUnspentResultEntry, LoadWalletResult, SignRawTransactionResult, Timestamp, WalletTxInfo,
+    ListUnspentResultEntry, LoadWalletResult, SignRawTransactionResult, Timestamp,
+    WalletCreateFundedPsbtResult, WalletProcessPsbtResult, WalletCreateFundedPsbtOptions, WalletTxInfo,
   },
   jsonrpc_core::{IoHandler, Value},
   jsonrpc_http_server::{CloseHandle, ServerBuilder},
@@ -118,7 +119,7 @@ pub struct TransactionTemplate<'a> {
   pub inputs: &'a [(usize, usize, usize)],
   pub output_values: &'a [u64],
   pub outputs: usize,
-  pub witness: Witness,
+  pub witnesses: Vec<Witness>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -150,7 +151,7 @@ impl<'a> Default for TransactionTemplate<'a> {
       inputs: &[],
       output_values: &[],
       outputs: 1,
-      witness: Witness::default(),
+      witnesses: vec![],
     }
   }
 }
