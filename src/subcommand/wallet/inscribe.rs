@@ -143,11 +143,9 @@ impl Inscribe {
       .map(Ok)
       .unwrap_or_else(|| get_change_address(&client))?;
 
-    let tmp_client = options.bitcoin_rpc_client_for_wallet_command(false)?;
 
     let (unsigned_commit_tx, reveal_psbt, _recovery_key_pair) =
       Inscribe::create_inscription_transactions(
-        tmp_client,
         self.satpoint,
         None,
         inscription,
@@ -253,7 +251,6 @@ impl Inscribe {
   }
 
   fn create_inscription_transactions(
-    client: Client,
     satpoint: Option<SatPoint>,
     parent: Option<(SatPoint, TxOut)>,
     inscription: Inscription,
@@ -421,26 +418,6 @@ impl Inscribe {
         Self::build_reveal_psbt(reveal_tx.clone()),
       )
     };
-
-    //dbg!(&reveal_psbt);
-    //dbg!(bitcoin::blockdata::transaction::EcdsaSighashType::AllPlusAnyoneCanPay.to_u32());
-
-    //let result = &client.wallet_process_psbt(
-    //  &reveal_psbt.to_string(),
-    //  None,
-    //  if parent.is_some() {
-    //    Some(SigHashType::from(
-    //      bitcoin::blockdata::transaction::EcdsaSighashType::AllPlusAnyoneCanPay,
-    //    )) // TODO: use SchnorrSighashType
-    //  } else {
-    //    None
-    //  },
-    //  None,
-    //)?;
-
-    //let updated_psbt = PartiallySignedTransaction::from_str(&result.psbt).unwrap();
-
-    //dbg!(updated_psbt.extract_tx());
 
     let mut sighash_cache = SighashCache::new(&mut reveal_tx);
 

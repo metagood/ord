@@ -602,4 +602,18 @@ impl Api for Server {
       complete: true,
     })
   }
+
+//  fn wallet_create_funded_psbt(
+//    inputs: Vec<CreateRawTransactionInput>,
+//    outputs: HashMap<String, f64>,
+//    locktime: Option<i64>,
+//    options: Option<WalletCreateFundedPsbtOptions>,
+//    bip32derivs: Option<bool>,
+//  ) -> Result<WalletCreateFundedPsbtResult, jsonrpc_core::Error> {
+//    Ok(WalletCreateFundedPsbtResult {
+//      psbt: "".into(),
+//      fee: Amount::ZERO,
+//      change_position: 0,
+//    })
+//  }
 }

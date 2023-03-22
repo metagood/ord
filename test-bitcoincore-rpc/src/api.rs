@@ -153,7 +153,6 @@ pub trait Api {
   fn list_wallets(&self) -> Result<Vec<String>, jsonrpc_core::Error>;
 
   #[rpc(name = "walletprocesspsbt")]
-
   fn wallet_process_psbt(
     &self,
     psbt: String,
@@ -161,4 +160,13 @@ pub trait Api {
     _sighash_type: Option<String>,
     _bip32derivs: Option<bool>,
   ) -> Result<WalletProcessPsbtResult, jsonrpc_core::Error>;
+
+//  #[rpc(name = "walletcreatefundedpsbt")]
+//  fn wallet_create_funded_psbt(
+//    inputs: Vec<CreateRawTransactionInput>,
+//    outputs: HashMap<String, f64>,
+//    locktime: Option<i64>,
+//    options: Option<WalletCreateFundedPsbtOptions>,
+//    bip32derivs: Option<bool>
+//  ) -> Result<WalletCreateFundedPsbtResult, jsonrpc_core::Error>;
 }
