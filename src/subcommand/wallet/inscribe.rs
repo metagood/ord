@@ -63,8 +63,11 @@ pub(crate) struct Inscribe {
 
 impl Inscribe {
   pub(crate) fn run(self, options: Options) -> Result {
-    println!("inscribing...");
-    println!("parent is some: {}", self.parent.is_some());
+    // println!("inscribing...");
+    // println!("parent is some: {}", self.parent.is_some());
+    if self.parent.is_some() {
+      println!("ahhhhhh...");
+    }
 
     let index = Index::open(&options)?;
     index.update()?;

@@ -200,19 +200,19 @@ fn inscribe_child() {
     fees: u64,
   }
 
-  // let output: Output = match ord(
-  match ord(
+  let output: Output = match ord(
+  // match ord(
     &cookiefile,
     &ord_data_dir,
     rpc_port,
     &["wallet", "inscribe", "parent.txt"],
   ) {
-    Ok(s) => &s,
-    // Ok(s) => serde_json::from_str(&s)
-    //   .unwrap_or_else(|err| panic!("Failed to deserialize JSON: {err}\n{s}")),
+    // Ok(s) => &s,
+    Ok(s) => serde_json::from_str(&s)
+      .unwrap_or_else(|err| panic!("Failed to deserialize JSON: {err}\n{s}")),
     Err(e) => panic!("error inscribing parent: {}", e),
   };
-  // let parent_id = output.inscription;
+  let parent_id = output.inscription;
 
   rpc_client.generate_to_address(1, &address).unwrap();
 
@@ -221,8 +221,8 @@ fn inscribe_child() {
     &cookiefile,
     &ord_data_dir,
     rpc_port,
-    // &["wallet", "inscribe", "--parent", &parent_id, "child.txt"],
-    &["wallet", "inscribe", "--parent", "856036cb73bd2414c6fb65047b26e303ce3fc7ac451ee44982e924fa7777e844i0", "child.txt"],
+    &["wallet", "inscribe", "--parent", &parent_id, "child.txt"],
+    // &["wallet", "inscribe", "--parent", "856036cb73bd2414c6fb65047b26e303ce3fc7ac451ee44982e924fa7777e844i0", "child.txt"],
   ) {
     Ok(s) => serde_json::from_str(&s)
       .unwrap_or_else(|err| panic!("Failed to deserialize JSON: {err}\n{s}")),
@@ -276,26 +276,26 @@ fn inscribe_child() {
     thread::sleep(Duration::from_millis(25));
   }
 
-  // let response = client
-  //   .get(format!(
-  //     "http://127.0.0.1:{ord_port}/inscription/{parent_id}"
-  //   ))
-  //   .send()
-  //   .unwrap();
+  let response = client
+    .get(format!(
+      "http://127.0.0.1:{ord_port}/inscription/{parent_id}"
+    ))
+    .send()
+    .unwrap();
 
-  // assert_regex_match!(response.text().unwrap(), &format!(".*id.*{}.*", parent_id));
+  assert_regex_match!(response.text().unwrap(), &format!(".*id.*{}.*", parent_id));
 
-  // thread::sleep(Duration::from_secs(10));
+  thread::sleep(Duration::from_secs(10));
 
-  // let response = client
-  //   .get(format!(
-  //     "http://127.0.0.1:{ord_port}/inscription/{child_id}"
-  //   ))
-  //   .send()
-  //   .unwrap();
+  let response = client
+    .get(format!(
+      "http://127.0.0.1:{ord_port}/inscription/{child_id}"
+    ))
+    .send()
+    .unwrap();
 
-  // assert_regex_match!(
-  //   response.text().unwrap(),
-  //   &format!(".*parent.*{}.*", parent_id)
-  // );
+  assert_regex_match!(
+    response.text().unwrap(),
+    &format!(".*parent.*{}.*", parent_id)
+  );
 }
