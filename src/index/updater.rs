@@ -102,7 +102,12 @@ impl Updater {
 
     let mut uncommitted = 0;
     let mut value_cache = HashMap::new();
-    let mut prev_block: Option<BlockData> = None;
+
+    let mut prev_block_hash: Option<BlockHash> = if let Some(prev_height) = self.height.checked_sub(1) {
+      Some(index.client.get_block_hash(prev_height).unwrap())
+    } else {
+      None
+    };
 
     loop {
       let block = match rx.recv() {
@@ -119,17 +124,17 @@ impl Updater {
         &mut value_cache,
       )?;
 
-      if let Some(prev) = prev_block {
+      if let Some(prev) = prev_block_hash {
         log::info!(
           target: "new_inscription_satpoint",
           "{{ block_hash: {}, prev_block_hash:{}, tx_count:{} }}",
           &block.header.block_hash(),
-          &prev.header.block_hash(),
+          &prev,
           &block.txdata.len(),
         );
       }
 
-      prev_block = Some(block);
+      prev_block_hash = Some(block.header.block_hash());
 
       if let Some(progress_bar) = &mut progress_bar {
         progress_bar.inc(1);
