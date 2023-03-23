@@ -237,8 +237,6 @@ fn inscribe_child() {
 
   rpc_client.generate_to_address(1, &address).unwrap();
 
-  thread::sleep(Duration::from_secs(1));
-
   let _ord_server = KillOnDrop(
     Command::new(executable_path("ord"))
       .env("ORD_INTEGRATION_TEST", "1")
@@ -289,6 +287,8 @@ fn inscribe_child() {
     .unwrap();
 
   assert_regex_match!(response.text().unwrap(), &format!(".*id.*{}.*", parent_id));
+
+  thread::sleep(Duration::from_secs(10));
 
   let response = client
     .get(format!(
