@@ -1,5 +1,6 @@
 use {
   super::*,
+  bitcoin::Address,
   bitcoincore_rpc::{Client, RpcApi},
   std::ffi::OsString,
 };
@@ -187,7 +188,9 @@ fn inscribe_child() {
     .get_new_address(None, Some(bitcoincore_rpc::json::AddressType::Bech32m))
     .unwrap();
 
-  rpc_client.generate_to_address(101, &address).unwrap();
+  rpc_client.generate_to_address(1, &address).unwrap();
+  let random_address = Address::from_str("bcrt1p998q5wmfjdwxkxpjcrnsfytdgu24qazas9gcjdfzl2asq9s38qtsgl8men").unwrap();
+  rpc_client.generate_to_address(100, &random_address).unwrap();
 
   fs::write(ord_data_dir.as_path().join("parent.txt"), "Pater").unwrap();
 
