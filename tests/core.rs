@@ -204,20 +204,21 @@ fn inscribe_child() {
   }
 
   let output: Output = match ord(
-  // match ord(
     &cookiefile,
     &ord_data_dir,
     rpc_port,
     &["wallet", "inscribe", "parent.txt"],
   ) {
-    // Ok(s) => &s,
     Ok(s) => serde_json::from_str(&s)
       .unwrap_or_else(|err| panic!("Failed to deserialize JSON: {err}\n{s}")),
     Err(e) => panic!("error inscribing parent: {}", e),
   };
+
   let parent_id = output.inscription;
 
   rpc_client.generate_to_address(1, &address).unwrap();
+
+  thread::sleep(Duration::from_secs(1));
 
   fs::write(ord_data_dir.as_path().join("child.txt"), "Filius").unwrap();
   let output: Output = match ord(
@@ -225,7 +226,6 @@ fn inscribe_child() {
     &ord_data_dir,
     rpc_port,
     &["wallet", "inscribe", "--parent", &parent_id, "child.txt"],
-    // &["wallet", "inscribe", "--parent", "856036cb73bd2414c6fb65047b26e303ce3fc7ac451ee44982e924fa7777e844i0", "child.txt"],
   ) {
     Ok(s) => serde_json::from_str(&s)
       .unwrap_or_else(|err| panic!("Failed to deserialize JSON: {err}\n{s}")),
@@ -236,6 +236,8 @@ fn inscribe_child() {
   let ord_port = 8080;
 
   rpc_client.generate_to_address(1, &address).unwrap();
+
+  thread::sleep(Duration::from_secs(1));
 
   let _ord_server = KillOnDrop(
     Command::new(executable_path("ord"))
@@ -287,8 +289,6 @@ fn inscribe_child() {
     .unwrap();
 
   assert_regex_match!(response.text().unwrap(), &format!(".*id.*{}.*", parent_id));
-
-  thread::sleep(Duration::from_secs(10));
 
   let response = client
     .get(format!(

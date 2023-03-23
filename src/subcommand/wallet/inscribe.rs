@@ -63,20 +63,10 @@ pub(crate) struct Inscribe {
 
 impl Inscribe {
   pub(crate) fn run(self, options: Options) -> Result {
-    // println!("inscribing...");
-    // println!("parent is some: {}", self.parent.is_some());
-    if self.parent.is_some() {
-      println!("ahhhhhh...");
-    }
-
     let index = Index::open(&options)?;
     index.update()?;
 
-    let client = options.bitcoin_rpc_client_for_wallet_command(false, self.parent.is_some())?;
-
-    if self.parent.is_some() {
-      println!("after bitcoin_rpc_client_for_wallet_command call...");
-    }
+    let client = options.bitcoin_rpc_client_for_wallet_command(false)?;
 
     let mut utxos = index.get_unspent_outputs(Wallet::load(&options)?)?;
 
