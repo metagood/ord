@@ -1,6 +1,37 @@
 `ord`
 =====
+First of all, install rust and build `ord` from source (see [building section](#building)) and then start your `bitcoind` daemon.  
+On the examples we are going to use the `signet` settings, starting by the `bitcoin.conf` file for the bitcoin node:
+```bash
+# ~/.bitcoin/bitcoin.conf
+rpcallowip=127.0.0.1
+txindex=1
+chain=signet
+server=1
 
+[signet]
+rpcport=38332
+```
+
+**New features:**
+* Added the endpoint `/inscription_by_number/:number`  
+  To use this endpoint start the `ord` server
+  ```
+  sudo ./target/release/ord -s --cookie-file ~/.bitcoin/signet/.cookie --rpc-url 127.0.0.1:38332 server
+  ```
+
+* Added the endpoint `/block_json/:height`
+
+* Added the snapshot cli command `ord snapshot`  
+  To use this cli run
+  ```
+  sudo ./target/release/ord -s --cookie-file ~/.bitcoin/signet/.cookie --rpc-url 127.0.0.1:38332 snapshot > inscriptions_snapshot.csv
+  ```
+
+* Added a set of queries cli commands `ord query <sat|block|inscription>`
+
+`ord`
+=====
 `ord` is an index, block explorer, and command-line wallet. It is experimental
 software with no warranty. See [LICENSE](LICENSE) for more details.
 

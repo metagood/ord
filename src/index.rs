@@ -244,6 +244,21 @@ impl Index {
     })
   }
 
+  pub(crate) fn get_inscription_ids_by_number(
+    &self,
+  ) -> Result<HashMap<InscriptionId, u64>> {
+    let map: HashMap<InscriptionId, u64> = HashMap::from_iter(
+      self
+        .database
+        .begin_read()?
+        .open_table(INSCRIPTION_NUMBER_TO_INSCRIPTION_ID)?
+        .range(0..)?
+        .map(|(n, id)| (Entry::load(*id.value()), n.value()))
+    );
+
+    Ok(map)
+  }
+
   pub(crate) fn get_unspent_outputs(&self, _wallet: Wallet) -> Result<BTreeMap<OutPoint, Amount>> {
     let mut utxos = BTreeMap::new();
     utxos.extend(
