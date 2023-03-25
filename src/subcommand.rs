@@ -46,7 +46,7 @@ pub(crate) enum Subcommand {
   Traits(traits::Traits),
   #[clap(subcommand, about = "Wallet commands")]
   Wallet(wallet::Wallet),
-  #[clap(about = "Extract inscription data from witness")]
+  #[clap(subcommand, about = "Extract inscription data from witness")]
   Witness(witness::Witness),
 }
 
