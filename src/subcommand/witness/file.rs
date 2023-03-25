@@ -4,10 +4,10 @@ use super::*;
 
 #[derive(Debug, Parser)]
 pub(crate) struct File {
-    #[clap(help = "The inscription to extract the content.")]
-    inscription_id: String,
-    #[clap(help = "The name of the file to be created with the inscription content.")]
-    filename: String,
+  #[clap(help = "The inscription to extract the content.")]
+  inscription_id: String,
+  #[clap(help = "The name of the file to be created with the inscription content.")]
+  filename: String,
 }
 
 impl File {

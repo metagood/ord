@@ -2,8 +2,8 @@ use super::*;
 
 #[derive(Debug, Parser)]
 pub(crate) struct Ctype {
-    #[clap(help = "The inscription to extract the content type.")]
-    inscription_id: String,
+  #[clap(help = "The inscription to extract the content type.")]
+  inscription_id: String,
 }
 
 impl Ctype {
