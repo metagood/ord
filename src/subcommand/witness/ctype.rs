@@ -13,11 +13,12 @@ impl Ctype {
     let index = Index::open(&options)?;
     index.update()?;
 
-    let inscription = index
-      .get_inscription_by_id(inscription_id)?
-      .ok_or_else(|| anyhow!("Inscription {} not found", inscription_id))?;
-
-    println!("{}", inscription.content_type().unwrap());
+    if let Some(inscription) = index.get_inscription_by_id(inscription_id)?{
+        println!("{}", inscription.content_type().unwrap());
+  
+      } else {
+        return Err(anyhow!("Inscription {} not found", inscription_id));
+    }
 
     Ok(())
   }
