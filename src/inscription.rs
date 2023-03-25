@@ -32,10 +32,6 @@ impl Inscription {
     InscriptionParser::parse(&tx.input.get(0)?.witness).ok()
   }
 
-  pub(crate) fn from_witness(witness: &Witness) -> Option<Inscription> {
-    InscriptionParser::parse(witness).ok()
-  }
-
   pub(crate) fn from_file(chain: Chain, path: impl AsRef<Path>) -> Result<Self, Error> {
     let path = path.as_ref();
 
