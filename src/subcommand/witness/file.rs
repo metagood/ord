@@ -17,13 +17,13 @@ impl File {
     let index = Index::open(&options)?;
     index.update()?;
 
-    if let Some(inscription) = index.get_inscription_by_id(inscription_id)? {
-      let content_bytes = inscription.body().unwrap();
-      let mut file = fs::File::create(self.filename)?;
-      file.write_all(content_bytes)?;
-    } else {
-      return Err(anyhow!("Inscription {} not found", inscription_id));
-    }
+    let inscription = index
+      .get_inscription_by_id(inscription_id)?
+      .ok_or_else(|| anyhow!("Inscription {} not found", inscription_id))?;
+
+    let content_bytes = inscription.body().unwrap();
+    let mut file = fs::File::create(self.filename)?;
+    file.write_all(content_bytes)?;
 
     Ok(())
   }
