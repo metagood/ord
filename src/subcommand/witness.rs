@@ -8,7 +8,7 @@ pub(crate) enum Witness {
   #[clap(about = "Display the content type from an inscription")]
   Ctype(ctype::Ctype),
   #[clap(about = "Write the inscription content to a file")]
-  File(file::File)
+  File(file::File),
 }
 
 impl Witness {

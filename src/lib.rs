@@ -151,7 +151,9 @@ pub fn main() {
 
   env_logger::builder()
     .filter(Some("new_inscription_satpoint"), log::LevelFilter::Info)
-    .target(env_logger::Target::Pipe(Box::new(inscription_satpoint_logs_file)))
+    .target(env_logger::Target::Pipe(Box::new(
+      inscription_satpoint_logs_file,
+    )))
     .format(|buf, record| writeln!(buf, "{}", record.args()))
     .init();
 
