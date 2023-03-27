@@ -25,6 +25,8 @@ impl File {
     let mut file = fs::File::create(self.filename)?;
     file.write_all(content_bytes)?;
 
+    println!("{}", file.metadata()?.len());
+
     Ok(())
   }
 }
