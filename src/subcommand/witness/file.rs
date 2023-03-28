@@ -21,9 +21,12 @@ impl File {
       .get_inscription_by_id(inscription_id)?
       .ok_or_else(|| anyhow!("Inscription {} not found", inscription_id))?;
 
-    let content_bytes = inscription.body().unwrap();
     let mut file = fs::File::create(self.filename)?;
-    file.write_all(content_bytes)?;
+    if let Some(content_bytes) = inscription.body() {
+      file.write_all(content_bytes)?;
+    }
+
+    println!("{}", file.metadata()?.len());
 
     Ok(())
   }
