@@ -29,7 +29,17 @@ impl Inscription {
   }
 
   pub(crate) fn from_transaction(tx: &Transaction) -> Option<Inscription> {
-    InscriptionParser::parse(&tx.input.get(0)?.witness).ok()
+    for input in &tx.input {
+      if let Some(inscription) = Inscription::from_tx_input(input) {
+        return Some(inscription);
+      }
+    }
+
+    None
+  }
+
+  pub(crate) fn from_tx_input(tx_in: &TxIn) -> Option<Inscription> {
+    InscriptionParser::parse(&tx_in.witness).ok()
   }
 
   pub(crate) fn from_file(chain: Chain, path: impl AsRef<Path>) -> Result<Self, Error> {
