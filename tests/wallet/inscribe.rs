@@ -473,8 +473,6 @@ fn inscribe_with_parent_inscription() {
 
   let parent_id = parent.inscription;
 
-  rpc_server.mine_blocks(1);
-
   TestServer::spawn_with_args(&rpc_server, &[])
     .assert_response_regex(format!("/inscription/{parent_id}"), ".*");
 
