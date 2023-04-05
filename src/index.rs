@@ -12,10 +12,12 @@ use {
   bitcoincore_rpc::{json::GetBlockHeaderResult, Auth, Client},
   chrono::SubsecRound,
   indicatif::{ProgressBar, ProgressStyle},
+  itertools::Itertools,
   log::log_enabled,
   redb::{Database, ReadableTable, Table, TableDefinition, WriteStrategy, WriteTransaction},
   std::collections::HashMap,
   std::sync::atomic::{self, AtomicBool},
+  std::sync::Mutex,
 };
 
 pub(crate) mod entry;
@@ -54,6 +56,7 @@ pub(crate) struct Index {
   height_limit: Option<u64>,
   reorged: AtomicBool,
   rpc_url: String,
+  cached_children_by_id: Mutex<HashMap<InscriptionId, Vec<InscriptionId>>>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -241,6 +244,7 @@ impl Index {
       height_limit: options.height_limit,
       reorged: AtomicBool::new(false),
       rpc_url,
+      cached_children_by_id: Mutex::new(HashMap::new()),
     })
   }
 
@@ -552,8 +556,47 @@ impl Index {
     Ok(
       self
         .get_transaction(inscription_id.txid)?
-        .and_then(|tx| Inscription::from_tx_input(tx.input.get(inscription_id.index as usize)?)),
+        .and_then(|tx| Inscription::from_transaction(&tx)),
     )
+  }
+
+  pub(crate) fn get_children_by_id(
+    &self,
+    inscription_id: InscriptionId,
+  ) -> Result<Vec<InscriptionId>> {
+    {
+      let cache = self.cached_children_by_id.lock().unwrap();
+      if let Some(cached_result) = cache.get(&inscription_id) {
+        return Ok(cached_result.clone());
+      }
+    }
+
+    let sorted_children = self
+      .database
+      .begin_read()?
+      .open_table(INSCRIPTION_ID_TO_INSCRIPTION_ENTRY)?
+      .iter()?
+      .filter_map(|(key, entry_value)| {
+        let entry = InscriptionEntry::load(entry_value.value());
+        if entry.parent == Some(inscription_id) {
+          Some((InscriptionId::load(*key.value()), entry.number))
+        } else {
+          None
+        }
+      })
+      .collect::<Vec<(InscriptionId, u64)>>()
+      .into_iter()
+      .sorted_by_key(|&(_id, number)| number)
+      .map(|(id, _)| id)
+      .collect::<Vec<InscriptionId>>();
+
+    self
+      .cached_children_by_id
+      .lock()
+      .unwrap()
+      .insert(inscription_id, sorted_children.clone());
+
+    Ok(sorted_children)
   }
 
   pub(crate) fn get_inscriptions_on_output(
@@ -568,7 +611,6 @@ impl Index {
           .open_table(SATPOINT_TO_INSCRIPTION_ID)?,
         outpoint,
       )?
-      .into_iter()
       .map(|(_satpoint, inscription_id)| inscription_id)
       .collect(),
     )
@@ -2261,5 +2303,9 @@ mod tests {
         timestamp: 3
       })
     );
+
+    // child successfully retrieved from parent
+    let children = context.index.get_children_by_id(parent_id).unwrap();
+    assert_eq!(children, vec![child_id]);
   }
 }

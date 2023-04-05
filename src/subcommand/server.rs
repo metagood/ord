@@ -8,9 +8,10 @@ use {
   super::*,
   crate::page_config::PageConfig,
   crate::templates::{
-    BlockHtml, ClockSvg, HomeHtml, InputHtml, InscriptionHtml, InscriptionsHtml, OutputHtml,
-    PageContent, PageHtml, PreviewAudioHtml, PreviewImageHtml, PreviewPdfHtml, PreviewTextHtml,
-    PreviewUnknownHtml, PreviewVideoHtml, RangeHtml, RareTxt, SatHtml, TransactionHtml,
+    BlockHtml, ClockSvg, HomeHtml, InputHtml, InscriptionChildrenHtml, InscriptionHtml,
+    InscriptionsHtml, OutputHtml, PageContent, PageHtml, PreviewAudioHtml, PreviewImageHtml,
+    PreviewPdfHtml, PreviewTextHtml, PreviewUnknownHtml, PreviewVideoHtml, RangeHtml, RareTxt,
+    SatHtml, TransactionHtml,
   },
   axum::{
     body,
@@ -156,6 +157,14 @@ impl Server {
         .route("/feed.xml", get(Self::feed))
         .route("/input/:block/:transaction/:input", get(Self::input))
         .route("/inscription/:inscription_id", get(Self::inscription))
+        .route(
+          "/inscription/:inscription_id/children",
+          get(Self::inscription_children),
+        )
+        .route(
+          "/inscription/:inscription_id/child/:index",
+          get(Self::inscription_child),
+        )
         .route("/inscriptions", get(Self::inscriptions))
         .route("/inscriptions/:from", get(Self::inscriptions_from))
         .route("/install.sh", get(Self::install_script))
@@ -842,7 +851,7 @@ impl Server {
       return response;
     }
 
-    return match inscription.media() {
+    match inscription.media() {
       Media::Audio => Ok(PreviewAudioHtml { inscription_id }.into_response()),
       Media::Iframe => Ok(
         Self::content_response(inscription)
@@ -883,7 +892,7 @@ impl Server {
       }
       Media::Unknown => Ok(PreviewUnknownHtml.into_response()),
       Media::Video => Ok(PreviewVideoHtml { inscription_id }.into_response()),
-    };
+    }
   }
 
   async fn inscription(
@@ -898,6 +907,8 @@ impl Server {
     let inscription = index
       .get_inscription_by_id(inscription_id)?
       .ok_or_not_found(|| format!("inscription {inscription_id}"))?;
+
+    let children = index.get_children_by_id(inscription_id)?;
 
     let satpoint = index
       .get_inscription_satpoint_by_id(inscription_id)?
@@ -926,6 +937,7 @@ impl Server {
     Ok(
       InscriptionHtml {
         chain: page_config.chain,
+        children,
         genesis_fee: entry.fee,
         genesis_height: entry.height,
         inscription,
@@ -933,7 +945,7 @@ impl Server {
         next,
         number: entry.number,
         output,
-        parent: dbg!(entry.parent),
+        parent: entry.parent,
         previous,
         sat: entry.sat,
         satpoint,
@@ -941,6 +953,39 @@ impl Server {
       }
       .page(page_config, index.has_sat_index()?),
     )
+  }
+
+  async fn inscription_children(
+    Extension(page_config): Extension<Arc<PageConfig>>,
+    Extension(index): Extension<Arc<Index>>,
+    Path(inscription_id): Path<InscriptionId>,
+  ) -> ServerResult<PageHtml<InscriptionChildrenHtml>> {
+    let entry = index
+      .get_inscription_entry(inscription_id)?
+      .ok_or_not_found(|| format!("inscription {inscription_id}"))?;
+
+    Ok(
+      InscriptionChildrenHtml {
+        parent_id: inscription_id,
+        parent_number: entry.number,
+        children: index.get_children_by_id(inscription_id)?,
+      }
+      .page(page_config, index.has_sat_index()?),
+    )
+  }
+
+  async fn inscription_child(
+    Extension(page_config): Extension<Arc<PageConfig>>,
+    Extension(index): Extension<Arc<Index>>,
+    Path((parent_id, child_num)): Path<(InscriptionId, usize)>,
+  ) -> ServerResult<PageHtml<InscriptionHtml>> {
+    let children = index.get_children_by_id(parent_id)?;
+
+    let child_id = children
+      .get(child_num)
+      .ok_or_not_found(|| format!("child #{child_num} for parent {parent_id}"))?;
+
+    Self::inscription(Extension(page_config), Extension(index), Path(*child_id)).await
   }
 
   async fn inscriptions(

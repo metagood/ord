@@ -13,7 +13,8 @@ fn inscribe_creates_inscriptions() {
 
   let Inscribe { inscription, .. } = inscribe(&rpc_server);
 
-  assert_eq!(rpc_server.descriptors().len(), 3);
+  // no backup
+  assert_eq!(rpc_server.descriptors().len(), 2);
 
   let request =
     TestServer::spawn_with_args(&rpc_server, &[]).request(format!("/content/{inscription}"));
@@ -44,7 +45,7 @@ fn inscribe_works_with_huge_expensive_inscriptions() {
 fn inscribe_fails_if_bitcoin_core_is_too_old() {
   let rpc_server = test_bitcoincore_rpc::builder().version(230000).build();
 
-  CommandBuilder::new("wallet inscribe hello.txt")
+  CommandBuilder::new("wallet inscribe hello.txt --fee-rate 1")
     .write("hello.txt", "HELLOWORLD")
     .expected_exit_code(1)
     .expected_stderr("error: Bitcoin Core 24.0.0 or newer required, current version is 23.0.0\n")
@@ -60,7 +61,7 @@ fn inscribe_no_backup() {
   create_wallet(&rpc_server);
   assert_eq!(rpc_server.descriptors().len(), 2);
 
-  CommandBuilder::new("wallet inscribe hello.txt --no-backup")
+  CommandBuilder::new("wallet inscribe hello.txt --no-backup --fee-rate 1")
     .write("hello.txt", "HELLOWORLD")
     .rpc_server(&rpc_server)
     .output::<Inscribe>();
@@ -74,7 +75,7 @@ fn inscribe_unknown_file_extension() {
   create_wallet(&rpc_server);
   rpc_server.mine_blocks(1);
 
-  CommandBuilder::new("wallet inscribe pepe.xyz")
+  CommandBuilder::new("wallet inscribe pepe.xyz --fee-rate 1")
     .write("pepe.xyz", [1; 520])
     .rpc_server(&rpc_server)
     .expected_exit_code(1)
@@ -90,7 +91,7 @@ fn inscribe_exceeds_chain_limit() {
   create_wallet(&rpc_server);
   rpc_server.mine_blocks(1);
 
-  CommandBuilder::new("--chain signet wallet inscribe degenerate.png")
+  CommandBuilder::new("--chain signet wallet inscribe degenerate.png --fee-rate 1")
     .write("degenerate.png", [1; 1025])
     .rpc_server(&rpc_server)
     .expected_exit_code(1)
@@ -108,7 +109,7 @@ fn regtest_has_no_content_size_limit() {
   create_wallet(&rpc_server);
   rpc_server.mine_blocks(1);
 
-  CommandBuilder::new("--chain regtest wallet inscribe degenerate.png")
+  CommandBuilder::new("--chain regtest wallet inscribe degenerate.png --fee-rate 1")
     .write("degenerate.png", [1; 1025])
     .rpc_server(&rpc_server)
     .stdout_regex(".*")
@@ -123,7 +124,7 @@ fn mainnet_has_no_content_size_limit() {
   create_wallet(&rpc_server);
   rpc_server.mine_blocks(1);
 
-  CommandBuilder::new("wallet inscribe degenerate.png")
+  CommandBuilder::new("wallet inscribe degenerate.png --fee-rate 1")
     .write("degenerate.png", [1; 1025])
     .rpc_server(&rpc_server)
     .stdout_regex(".*")
@@ -138,7 +139,7 @@ fn inscribe_does_not_use_inscribed_sats_as_cardinal_utxos() {
   rpc_server.mine_blocks_with_subsidy(1, 100);
 
   CommandBuilder::new(
-    "wallet inscribe degenerate.png"
+    "wallet inscribe degenerate.png --fee-rate 1"
   )
   .rpc_server(&rpc_server)
   .write("degenerate.png", [1; 100])
@@ -158,12 +159,14 @@ fn refuse_to_reinscribe_sats() {
 
   rpc_server.mine_blocks_with_subsidy(1, 100);
 
-  CommandBuilder::new(format!("wallet inscribe --satpoint {reveal}:0:0 hello.txt"))
-    .write("hello.txt", "HELLOWORLD")
-    .rpc_server(&rpc_server)
-    .expected_exit_code(1)
-    .expected_stderr(format!("error: sat at {reveal}:0:0 already inscribed\n"))
-    .run();
+  CommandBuilder::new(format!(
+    "wallet inscribe --satpoint {reveal}:0:0 hello.txt --fee-rate 1"
+  ))
+  .write("hello.txt", "HELLOWORLD")
+  .rpc_server(&rpc_server)
+  .expected_exit_code(1)
+  .expected_stderr(format!("error: sat at {reveal}:0:0 already inscribed\n"))
+  .run();
 }
 
 #[test]
@@ -183,7 +186,7 @@ fn refuse_to_inscribe_already_inscribed_utxo() {
   };
 
   CommandBuilder::new(format!(
-    "wallet inscribe --satpoint {output}:55555 hello.txt"
+    "wallet inscribe --satpoint {output}:55555 hello.txt --fee-rate 1"
   ))
   .write("hello.txt", "HELLOWORLD")
   .rpc_server(&rpc_server)
@@ -200,11 +203,12 @@ fn inscribe_with_optional_satpoint_arg() {
   create_wallet(&rpc_server);
   let txid = rpc_server.mine_blocks(1)[0].txdata[0].txid();
 
-  let Inscribe { inscription, .. } =
-    CommandBuilder::new(format!("wallet inscribe foo.txt --satpoint {txid}:0:0"))
-      .write("foo.txt", "FOO")
-      .rpc_server(&rpc_server)
-      .output();
+  let Inscribe { inscription, .. } = CommandBuilder::new(format!(
+    "wallet inscribe foo.txt --satpoint {txid}:0:0 --fee-rate 1"
+  ))
+  .write("foo.txt", "FOO")
+  .rpc_server(&rpc_server)
+  .output();
 
   rpc_server.mine_blocks(1);
 
@@ -264,10 +268,12 @@ fn inscribe_with_commit_fee_rate() {
   create_wallet(&rpc_server);
   rpc_server.mine_blocks(1);
 
-  CommandBuilder::new("--index-sats wallet inscribe degenerate.png --commit-fee-rate 2.0")
-    .write("degenerate.png", [1; 520])
-    .rpc_server(&rpc_server)
-    .output::<Inscribe>();
+  CommandBuilder::new(
+    "--index-sats wallet inscribe degenerate.png --commit-fee-rate 2.0 --fee-rate 1",
+  )
+  .write("degenerate.png", [1; 520])
+  .rpc_server(&rpc_server)
+  .output::<Inscribe>();
 
   let tx1 = &rpc_server.mempool()[0];
   let mut fee = 0;
@@ -309,7 +315,7 @@ fn inscribe_with_wallet_named_foo() {
 
   rpc_server.mine_blocks(1);
 
-  CommandBuilder::new("--wallet foo wallet inscribe degenerate.png")
+  CommandBuilder::new("--wallet foo wallet inscribe degenerate.png --fee-rate 1")
     .write("degenerate.png", [1; 520])
     .rpc_server(&rpc_server)
     .output::<Inscribe>();
@@ -321,14 +327,14 @@ fn inscribe_with_dry_run_flag() {
   create_wallet(&rpc_server);
   rpc_server.mine_blocks(1);
 
-  CommandBuilder::new("wallet inscribe --dry-run degenerate.png")
+  CommandBuilder::new("wallet inscribe --dry-run degenerate.png --fee-rate 1")
     .write("degenerate.png", [1; 520])
     .rpc_server(&rpc_server)
     .output::<Inscribe>();
 
   assert!(rpc_server.mempool().is_empty());
 
-  CommandBuilder::new("wallet inscribe degenerate.png")
+  CommandBuilder::new("wallet inscribe degenerate.png --fee-rate 1")
     .write("degenerate.png", [1; 520])
     .rpc_server(&rpc_server)
     .output::<Inscribe>();
@@ -342,11 +348,12 @@ fn inscribe_with_dry_run_flag_fees_increase() {
   create_wallet(&rpc_server);
   rpc_server.mine_blocks(1);
 
-  let total_fee_dry_run = CommandBuilder::new("wallet inscribe --dry-run degenerate.png")
-    .write("degenerate.png", [1; 520])
-    .rpc_server(&rpc_server)
-    .output::<Inscribe>()
-    .fees;
+  let total_fee_dry_run =
+    CommandBuilder::new("wallet inscribe --dry-run degenerate.png --fee-rate 1")
+      .write("degenerate.png", [1; 520])
+      .rpc_server(&rpc_server)
+      .output::<Inscribe>()
+      .fees;
 
   let total_fee_normal =
     CommandBuilder::new("wallet inscribe --dry-run degenerate.png --fee-rate 1.1")
@@ -370,7 +377,7 @@ fn inscribe_to_specific_destination() {
     .address;
 
   let txid = CommandBuilder::new(format!(
-    "wallet inscribe --destination {destination} degenerate.png"
+    "wallet inscribe --destination {destination} degenerate.png --fee-rate 1"
   ))
   .write("degenerate.png", [1; 520])
   .rpc_server(&rpc_server)
@@ -392,7 +399,7 @@ fn inscribe_with_no_limit() {
   rpc_server.mine_blocks(1);
 
   let four_megger = std::iter::repeat(0).take(4_000_000).collect::<Vec<u8>>();
-  CommandBuilder::new("wallet inscribe --no-limit degenerate.png")
+  CommandBuilder::new("wallet inscribe --no-limit degenerate.png --fee-rate 1")
     .write("degenerate.png", four_megger)
     .rpc_server(&rpc_server);
 }
@@ -459,25 +466,22 @@ fn inscribe_with_parent_inscription() {
   create_wallet(&rpc_server);
   rpc_server.mine_blocks(1);
 
-  let parent = CommandBuilder::new("wallet inscribe file.png")
-    .write("file.png", [1; 520])
+  let parent_id = CommandBuilder::new("wallet inscribe --fee-rate 1.0 parent.png")
+    .write("parent.png", [1; 520])
     .rpc_server(&rpc_server)
     .output::<Inscribe>();
 
   let parent_id = parent.inscription;
 
-  rpc_server.mine_blocks(1);
+  TestServer::spawn_with_args(&rpc_server, &[])
+    .assert_response_regex(format!("/inscription/{parent_id}"), ".*");
 
-  let child_output = CommandBuilder::new(format!("wallet inscribe --parent {parent_id} child.png"))
-    .write("child.png", [1; 520])
-    .rpc_server(&rpc_server)
-    .output::<Inscribe>();
-  // let child_output = CommandBuilder::new(format!("wallet inscribe child.png"))
-  //   .write("child.png", [1; 520])
-  //   .rpc_server(&rpc_server)
-  //   .output::<Inscribe>();
-  
-  rpc_server.mine_blocks(1);
+  let child_output = CommandBuilder::new(format!(
+    "wallet inscribe --fee-rate 1.0 --parent {parent_id} child.png"
+  ))
+  .write("child.png", [1; 520])
+  .rpc_server(&rpc_server)
+  .output::<Inscribe>();
 
   assert_eq!(parent_id, child_output.parent.unwrap());
 
@@ -487,8 +491,8 @@ fn inscribe_with_parent_inscription() {
   // );
 
   TestServer::spawn_with_args(&rpc_server, &[]).assert_response_regex(
-    format!("/inscription/{}", dbg!(child_output.inscription)),
-    format!(".*parent.*{}", parent_id),
+    format!("/inscription/{}", child_output.inscription),
+    format!(".*parent.*{}.*", parent_id),
   );
 }
 
@@ -500,12 +504,59 @@ fn inscribe_with_non_existent_parent_inscription() {
 
   let parent_id = "3ac40a8f3c0d295386e1e597467a1ee0578df780834be885cd62337c2ed738a5i0";
 
-  CommandBuilder::new(format!("wallet inscribe --parent {parent_id} child.png"))
-    .write("child.png", [1; 520])
+  CommandBuilder::new(format!(
+    "wallet inscribe --fee-rate 1.0 --parent {parent_id} child.png"
+  ))
+  .write("child.png", [1; 520])
+  .rpc_server(&rpc_server)
+  .expected_stderr(format!(
+    "error: specified parent {parent_id} does not exist\n"
+  ))
+  .expected_exit_code(1)
+  .run();
+}
+
+#[test]
+fn inscribe_with_parent_inscription_and_fee_rate() {
+  let rpc_server = test_bitcoincore_rpc::spawn();
+  create_wallet(&rpc_server);
+  rpc_server.mine_blocks(1);
+
+  let parent_output = CommandBuilder::new("wallet inscribe --fee-rate 5.0 parent.png")
+    .write("parent.png", [1; 520])
     .rpc_server(&rpc_server)
-    .expected_stderr(format!(
-      "error: specified parent {parent_id} does not exist\n"
-    ))
-    .expected_exit_code(1)
-    .run();
+    .output::<Inscribe>();
+
+  let parent_id = parent_output.inscription;
+
+  let commit_tx = &rpc_server.mempool()[0];
+  let reveal_tx = &rpc_server.mempool()[1];
+  assert_eq!(
+    ord::FeeRate::try_from(5.0)
+      .unwrap()
+      .fee(commit_tx.vsize() + reveal_tx.vsize())
+      .to_sat(),
+    parent_output.fees
+  );
+
+  rpc_server.mine_blocks(1);
+
+  let child_output = CommandBuilder::new(format!(
+    "wallet inscribe --fee-rate 5.0 --parent {parent_id} child.png"
+  ))
+  .write("child.png", [1; 520])
+  .rpc_server(&rpc_server)
+  .output::<Inscribe>();
+
+  assert_eq!(parent_id, child_output.parent.unwrap());
+
+  let commit_tx = &rpc_server.mempool()[0];
+  let reveal_tx = &rpc_server.mempool()[1];
+  assert_eq!(
+    ord::FeeRate::try_from(5.0)
+      .unwrap()
+      .fee(commit_tx.vsize() + reveal_tx.vsize())
+      .to_sat(),
+    child_output.fees
+  );
 }
