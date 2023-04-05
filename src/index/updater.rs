@@ -127,7 +127,7 @@ impl Updater {
       if let Some(prev) = prev_block_hash {
         log::info!(
           target: "new_inscription_satpoint",
-          "{{ block_hash: {}, prev_block_hash:{}, tx_count:{} }}",
+          "{{\"block_hash\":\"{}\",\"prev_block_hash\":\"{}\",\"tx_count\":{}}}",
           &block.header.block_hash(),
           &prev,
           &block.txdata.len(),
