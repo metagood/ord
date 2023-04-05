@@ -242,7 +242,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
     let inscription_id = InscriptionId::load(inscription_id);
     let satpoint = SatPoint::load(new_satpoint);
 
-    log::info!(target: "new_inscription_satpoint", "{}, {}, {}", self.height, satpoint, inscription_id);
+    log::info!(target: "new_inscription_satpoint", "{},{},{}", self.height, satpoint, inscription_id);
 
     Ok(())
   }
