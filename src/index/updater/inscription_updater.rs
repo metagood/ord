@@ -250,12 +250,12 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
       if let (Some(content_type), Some(body)) = (inscription.content_type(), inscription.body()) {
         log::info!(
           target: "new_inscription_satpoint",
-          "{},{},{},{},{},{}",
+          "{},{},{},{},{}",
           self.height,
           satpoint,
           inscription_id,
           content_type,
-          hex::encode(body),
+          // hex::encode(body),
           body.len()
         );
       } else {
