@@ -4,6 +4,7 @@ pub(super) struct Flotsam {
   inscription_id: InscriptionId,
   offset: u64,
   origin: Origin,
+  tx_in: Option<TxIn>,
 }
 
 enum Origin {
@@ -87,6 +88,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
             offset: input_value + old_satpoint.offset,
             inscription_id,
             origin: Origin::Old(old_satpoint),
+            tx_in: None,
           });
         }
 
@@ -115,6 +117,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
         inscription_id: txid.into(),
         offset: 0,
         origin: Origin::New(input_value - tx.output.iter().map(|txout| txout.value).sum::<u64>()),
+        tx_in: tx.input.get(0).cloned(),
       });
     };
 
@@ -242,7 +245,29 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
     let inscription_id = InscriptionId::load(inscription_id);
     let satpoint = SatPoint::load(new_satpoint);
 
-    log::info!(target: "new_inscription_satpoint", "{},{},{}", self.height, satpoint, inscription_id);
+    if let Some(tx_in) = flotsam.tx_in {
+      let inscription = Inscription::from_tx_input(&tx_in).unwrap();
+      let content_type = inscription.content_type().unwrap_or("");
+      let content_len = inscription.body().map_or(0, |body| body.len());
+
+      log::info!(
+        target: "new_inscription_satpoint",
+        "{},{},{},{},{}",
+        self.height,
+        satpoint,
+        inscription_id,
+        content_type,
+        content_len,
+      );
+    } else {
+      log::info!(
+        target: "new_inscription_satpoint",
+        "{},{},{}",
+        self.height,
+        satpoint,
+        inscription_id
+      );
+    }
 
     Ok(())
   }

@@ -29,13 +29,14 @@ impl Inscription {
   }
 
   pub(crate) fn from_transaction(tx: &Transaction) -> Option<Inscription> {
-    for input in &tx.input {
-      if let Some(inscription) = Inscription::from_tx_input(input) {
-        return Some(inscription);
-      }
-    }
+    InscriptionParser::parse(&tx.input.get(0)?.witness).ok()
+    // for input in &tx.input {
+    //   if let Some(inscription) = Inscription::from_tx_input(input) {
+    //     return Some(inscription);
+    //   }
+    // }
 
-    None
+    // None
   }
 
   pub(crate) fn from_tx_input(tx_in: &TxIn) -> Option<Inscription> {
@@ -395,6 +396,17 @@ mod tests {
       Ok(Inscription {
         content_type: None,
         body: Some(b"foo".to_vec()),
+      }),
+    );
+  }
+
+  #[test]
+  fn no_content_type_and_no_body() {
+    assert_eq!(
+      InscriptionParser::parse(&envelope(&[b"ord"])),
+      Ok(Inscription {
+        content_type: None,
+        body: None,
       }),
     );
   }
