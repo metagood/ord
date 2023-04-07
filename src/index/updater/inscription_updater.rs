@@ -249,26 +249,18 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
 
     if let Some(tx_in) = flotsam.tx_in {
       let inscription = Inscription::from_tx_input(&tx_in).unwrap();
-      if let (Some(content_type), Some(body)) = (inscription.content_type(), inscription.body()) {
-        log::info!(
-          target: "new_inscription_satpoint",
-          "{},{},{},{},{}",
-          self.height,
-          satpoint,
-          inscription_id,
-          content_type,
-          // hex::encode(body),
-          body.len()
-        );
-      } else {
-        log::info!(
-          target: "new_inscription_satpoint",
-          "{},{},{}",
-          self.height,
-          satpoint,
-          inscription_id
-        );
-      }
+      let content_type = inscription.content_type().unwrap_or("");
+      let content_len = inscription.body().map_or(0, |body| body.len());
+
+      log::info!(
+        target: "new_inscription_satpoint",
+        "{},{},{},{},{}",
+        self.height,
+        satpoint,
+        inscription_id,
+        content_type,
+        content_len,
+      );
     } else {
       log::info!(
         target: "new_inscription_satpoint",
