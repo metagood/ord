@@ -401,6 +401,17 @@ mod tests {
   }
 
   #[test]
+  fn no_content_type_and_no_body() {
+    assert_eq!(
+      InscriptionParser::parse(&envelope(&[b"ord"])),
+      Ok(Inscription {
+        content_type: None,
+        body: None,
+      }),
+    );
+  }
+
+  #[test]
   fn valid_body_in_multiple_pushes() {
     assert_eq!(
       InscriptionParser::parse(&envelope(&[
