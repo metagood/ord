@@ -94,7 +94,7 @@ impl Display for StaticHtml {
 pub(crate) struct Server {
   #[clap(
     long,
-    default_value = "0.0.0.0",
+    default_value = "127.0.0.1",
     help = "Listen on <ADDRESS> for incoming requests."
   )]
   address: String,
