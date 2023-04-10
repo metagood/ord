@@ -7,6 +7,7 @@ pub(crate) use {
   iframe::Iframe,
   input::InputHtml,
   inscription::InscriptionHtml,
+  inscription_children::InscriptionChildrenHtml,
   inscriptions::InscriptionsHtml,
   output::OutputHtml,
   page_config::PageConfig,
@@ -26,6 +27,7 @@ mod home;
 mod iframe;
 mod input;
 mod inscription;
+mod inscription_children;
 mod inscriptions;
 mod output;
 mod preview;
@@ -137,7 +139,7 @@ mod tests {
       <a href=/rare.txt>rare.txt</a>
       <form action=/search method=get>
         <input type=text .*>
-        <input type=submit value=Search>
+        <input type=submit value='&#9906'>
       </form>
     </nav>
   </header>

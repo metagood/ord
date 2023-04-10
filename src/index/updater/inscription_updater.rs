@@ -1,13 +1,16 @@
-use super::*;
+use {super::*, std::collections::BTreeSet};
 
+#[derive(Clone, Copy, Debug)]
 pub(super) struct Flotsam {
   inscription_id: InscriptionId,
   offset: u64,
   origin: Origin,
 }
 
+// change name to Jetsam or more poetic german word
+#[derive(Clone, Copy, Debug)]
 enum Origin {
-  New(u64),
+  New((u64, Option<InscriptionId>)),
   Old(SatPoint),
 }
 
@@ -26,6 +29,7 @@ pub(super) struct InscriptionUpdater<'a, 'db, 'tx> {
   satpoint_to_id: &'a mut Table<'db, 'tx, &'static SatPointValue, &'static InscriptionIdValue>,
   timestamp: u32,
   value_cache: &'a mut HashMap<OutPoint, u64>,
+  cached_children_by_id: &'a Mutex<HashMap<InscriptionId, Vec<InscriptionId>>>,
 }
 
 impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
@@ -41,6 +45,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
     satpoint_to_id: &'a mut Table<'db, 'tx, &'static SatPointValue, &'static InscriptionIdValue>,
     timestamp: u32,
     value_cache: &'a mut HashMap<OutPoint, u64>,
+    cached_children_by_id: &'a Mutex<HashMap<InscriptionId, Vec<InscriptionId>>>,
   ) -> Result<Self> {
     let next_number = number_to_id
       .iter()?
@@ -64,6 +69,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
       satpoint_to_id,
       timestamp,
       value_cache,
+      cached_children_by_id,
     })
   }
 
@@ -73,50 +79,109 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
     txid: Txid,
     input_sat_ranges: Option<&VecDeque<(u64, u64)>>,
   ) -> Result<u64> {
-    let mut inscriptions = Vec::new();
-
+    let mut floating_inscriptions = Vec::new();
+    let mut inscribed_offsets = BTreeSet::new();
     let mut input_value = 0;
     for tx_in in &tx.input {
+      // skip subsidy since no inscriptions possible
       if tx_in.previous_output.is_null() {
         input_value += Height(self.height).subsidy();
-      } else {
-        for (old_satpoint, inscription_id) in
-          Index::inscriptions_on_output(self.satpoint_to_id, tx_in.previous_output)?
-        {
-          inscriptions.push(Flotsam {
-            offset: input_value + old_satpoint.offset,
+        continue;
+      }
+
+      // find existing inscriptions on input aka transfers
+      for (old_satpoint, inscription_id) in
+        Index::inscriptions_on_output(self.satpoint_to_id, tx_in.previous_output)?
+      {
+        floating_inscriptions.push(Flotsam {
+          offset: input_value + old_satpoint.offset,
+          inscription_id,
+          origin: Origin::Old(old_satpoint),
+        });
+
+        inscribed_offsets.insert(input_value + old_satpoint.offset);
+      }
+
+      // find new inscriptions
+      if let Some(inscription) = Inscription::from_tx_input(tx_in) {
+        // ignore new inscriptions on already inscribed offset (sats)
+        if !inscribed_offsets.contains(&input_value) {
+          let inscription_id = InscriptionId {
+            txid,
+            index: 0, // will have to be updated for multi inscriptions
+          };
+
+          // parent has to be in an input before child
+          // think about specifying a more general approach in a protocol doc/BIP
+          if let Some(parent_candidate) = inscription.get_parent_id() {
+            log::debug!(
+              "INDEX: inscription {} has inscribed parent {}",
+              inscription_id,
+              parent_candidate
+            );
+          }
+
+          let parent = inscription.get_parent_id().filter(|&parent_id| {
+            floating_inscriptions
+              .iter()
+              .any(|flotsam| flotsam.inscription_id == parent_id)
+          });
+
+          if let Some(parent) = parent {
+            log::debug!(
+              "INDEX: inscription {} has confirmed parent {}",
+              inscription_id,
+              parent
+            );
+          }
+
+          floating_inscriptions.push(Flotsam {
             inscription_id,
-            origin: Origin::Old(old_satpoint),
+            offset: input_value,
+            origin: Origin::New((0, parent)),
           });
         }
+      }
 
-        input_value += if let Some(value) = self.value_cache.remove(&tx_in.previous_output) {
-          value
-        } else if let Some(value) = self
-          .outpoint_to_value
-          .remove(&tx_in.previous_output.store())?
-        {
-          value.value()
-        } else {
-          self.value_receiver.blocking_recv().ok_or_else(|| {
-            anyhow!(
-              "failed to get transaction for {}",
-              tx_in.previous_output.txid
-            )
-          })?
-        }
+      // different ways to get the utxo set (input amount)
+      input_value += if let Some(value) = self.value_cache.remove(&tx_in.previous_output) {
+        value
+      } else if let Some(value) = self
+        .outpoint_to_value
+        .remove(&tx_in.previous_output.store())?
+      {
+        value.value()
+      } else {
+        self.value_receiver.blocking_recv().ok_or_else(|| {
+          anyhow!(
+            "failed to get transaction for {}",
+            tx_in.previous_output.txid
+          )
+        })?
       }
     }
 
-    if inscriptions.iter().all(|flotsam| flotsam.offset != 0)
-      && Inscription::from_transaction(tx).is_some()
-    {
-      inscriptions.push(Flotsam {
-        inscription_id: txid.into(),
-        offset: 0,
-        origin: Origin::New(input_value - tx.output.iter().map(|txout| txout.value).sum::<u64>()),
-      });
-    };
+    // calulate genesis fee for new inscriptions
+    let total_output_value = tx.output.iter().map(|txout| txout.value).sum::<u64>();
+    let mut floating_inscriptions = floating_inscriptions
+      .into_iter()
+      .map(|flotsam| {
+        if let Flotsam {
+          inscription_id,
+          offset,
+          origin: Origin::New((_, parent)),
+        } = flotsam
+        {
+          Flotsam {
+            inscription_id,
+            offset,
+            origin: Origin::New((input_value - total_output_value, parent)),
+          }
+        } else {
+          flotsam
+        }
+      })
+      .collect::<Vec<Flotsam>>();
 
     let is_coinbase = tx
       .input
@@ -125,11 +190,11 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
       .unwrap_or_default();
 
     if is_coinbase {
-      inscriptions.append(&mut self.flotsam);
+      floating_inscriptions.append(&mut self.flotsam);
     }
 
-    inscriptions.sort_by_key(|flotsam| flotsam.offset);
-    let mut inscriptions = inscriptions.into_iter().peekable();
+    floating_inscriptions.sort_by_key(|flotsam| flotsam.offset);
+    let mut inscriptions = floating_inscriptions.into_iter().peekable();
 
     let mut output_value = 0;
     for (vout, tx_out) in tx.output.iter().enumerate() {
@@ -150,7 +215,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
 
         self.update_inscription_location(
           input_sat_ranges,
-          inscriptions.next().unwrap(),
+          inscriptions.next().unwrap(), // This will need to change when we implement multiple inscriptions per TX (#1298).
           new_satpoint,
         )?;
       }
@@ -198,7 +263,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
       Origin::Old(old_satpoint) => {
         self.satpoint_to_id.remove(&old_satpoint.store())?;
       }
-      Origin::New(fee) => {
+      Origin::New((fee, parent)) => {
         self
           .number_to_id
           .insert(&self.next_number, &inscription_id)?;
@@ -218,17 +283,29 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
           }
         }
 
+        log::debug!(
+          "INDEX: assigned {} for inscription {} at height {}",
+          &self.next_number,
+          flotsam.inscription_id,
+          self.height
+        );
+
         self.id_to_entry.insert(
           &inscription_id,
           &InscriptionEntry {
             fee,
             height: self.height,
             number: self.next_number,
+            parent,
             sat,
             timestamp: self.timestamp,
           }
           .store(),
         )?;
+
+        if let Some(parent) = parent {
+          self.update_cached_children(parent, flotsam.inscription_id);
+        }
 
         self.next_number += 1;
       }
@@ -240,5 +317,14 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
     self.id_to_satpoint.insert(&inscription_id, &new_satpoint)?;
 
     Ok(())
+  }
+
+  fn update_cached_children(&self, parent: InscriptionId, inscription_id: InscriptionId) {
+    let mut cache = self.cached_children_by_id.lock().unwrap();
+
+    // only update the cache if it is already populated, so we retrieve the full list of children when required
+    if let Some(children) = cache.get_mut(&parent) {
+      children.push(inscription_id);
+    }
   }
 }
