@@ -198,6 +198,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
     new_satpoint: SatPoint,
   ) -> Result {
     let inscription_id = flotsam.inscription_id.store();
+    let inscription_number = self.next_number;
 
     match flotsam.origin {
       Origin::Old { old_satpoint } => {
@@ -254,20 +255,22 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
 
       log::info!(
         target: "new_inscription_satpoint",
-        "{},{},{},{},{}",
+        "{},{},{},{},{},{}",
         self.height,
         satpoint,
         inscription_id,
+        inscription_number,
         content_type,
         content_len,
       );
     } else {
       log::info!(
         target: "new_inscription_satpoint",
-        "{},{},{}",
+        "{},{},{},{}",
         self.height,
         satpoint,
-        inscription_id
+        inscription_id,
+        inscription_number,
       );
     }
 
