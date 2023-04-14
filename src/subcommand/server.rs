@@ -854,13 +854,22 @@ impl Server {
       .nth(satpoint.outpoint.vout.try_into().unwrap())
       .ok_or_not_found(|| format!("inscription {inscription_id} current transaction output"))?;
 
-    let creation_output = index
+    let previous_outpoint = index
       .get_transaction(inscription_id.txid)?
+      .ok_or_not_found(|| format!("inscription {inscription_id} current transaction"))?
+      .input
+      .into_iter()
+      .nth(inscription_id.index.try_into().unwrap())
+      .ok_or_not_found(|| format!("inscription {inscription_id} creation transaction output"))?
+      .previous_output;
+
+    let previous_output = index
+      .get_transaction(previous_outpoint.txid)?
       .ok_or_not_found(|| format!("inscription {inscription_id} current transaction"))?
       .output
       .into_iter()
-      .nth(satpoint.outpoint.vout.try_into().unwrap())
-      .ok_or_not_found(|| format!("inscription {inscription_id} creation transaction output"))?;
+      .nth(previous_outpoint.vout.try_into().unwrap())
+      .ok_or_not_found(|| format!("inscription {inscription_id} current transaction output"))?;
 
     let owner_address = config
       .chain
@@ -870,7 +879,7 @@ impl Server {
 
     let creator_address = config
       .chain
-      .address_from_script(&creation_output.script_pubkey)
+      .address_from_script(&previous_output.script_pubkey)
       .ok()
       .unwrap();
 
