@@ -89,6 +89,7 @@ impl Display for StaticHtml {
 
 #[derive(Serialize, Deserialize)]
 struct InscriptionData {
+  number: u64,
   id: InscriptionId,
   owner_address: Address,
   location: SatPoint,
@@ -874,6 +875,7 @@ impl Server {
       .unwrap();
 
     let insc = InscriptionData {
+      number: entry.number,
       id: inscription_id,
       owner_address,
       genesis_height: entry.height,
