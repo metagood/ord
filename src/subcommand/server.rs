@@ -17,7 +17,7 @@ use {
     http::{header, HeaderMap, HeaderValue, StatusCode, Uri},
     response::{IntoResponse, Redirect, Response},
     routing::get,
-    Router, TypedHeader, Json,
+    Json, Router, TypedHeader,
   },
   axum_server::Handle,
   rust_embed::RustEmbed,
@@ -88,7 +88,7 @@ impl Display for StaticHtml {
 }
 
 #[derive(Serialize, Deserialize)]
-struct InscriptionData{
+struct InscriptionData {
   id: InscriptionId,
   owner_address: Address,
   location: SatPoint,
@@ -166,7 +166,10 @@ impl Server {
         .route("/feed.xml", get(Self::feed))
         .route("/input/:block/:transaction/:input", get(Self::input))
         .route("/inscription/:inscription_id", get(Self::inscription))
-        .route("/inscription-data/:inscription_id", get(Self::inscription_data))
+        .route(
+          "/inscription-data/:inscription_id",
+          get(Self::inscription_data),
+        )
         .route("/inscriptions", get(Self::inscriptions))
         .route("/inscriptions/:from", get(Self::inscriptions_from))
         .route("/install.sh", get(Self::install_script))
@@ -828,7 +831,7 @@ impl Server {
   async fn inscription_data(
     Extension(config): Extension<Arc<PageConfig>>,
     Extension(index): Extension<Arc<Index>>,
-    Path(DeserializeFromStr(inscription_id)): Path<DeserializeFromStr<InscriptionId>>
+    Path(DeserializeFromStr(inscription_id)): Path<DeserializeFromStr<InscriptionId>>,
   ) -> ServerResult<Json<InscriptionData>> {
     let entry = index
       .get_inscription_entry(inscription_id)?
@@ -858,11 +861,17 @@ impl Server {
       .nth(satpoint.outpoint.vout.try_into().unwrap())
       .ok_or_not_found(|| format!("inscription {inscription_id} creation transaction output"))?;
 
-    let owner_address = config.chain
-      .address_from_script(&output.script_pubkey).ok().unwrap();
+    let owner_address = config
+      .chain
+      .address_from_script(&output.script_pubkey)
+      .ok()
+      .unwrap();
 
-    let creator_address = config.chain
-      .address_from_script(&creation_output.script_pubkey).ok().unwrap();
+    let creator_address = config
+      .chain
+      .address_from_script(&creation_output.script_pubkey)
+      .ok()
+      .unwrap();
 
     let insc = InscriptionData {
       id: inscription_id,
