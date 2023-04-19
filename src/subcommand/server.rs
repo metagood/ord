@@ -12,11 +12,11 @@ use {
   },
   axum::{
     body,
-    extract::{Extension, Path, Query},
+    extract::{Extension, Path, Query, RawBody},
     headers::UserAgent,
     http::{header, HeaderMap, HeaderValue, StatusCode, Uri},
     response::{IntoResponse, Redirect, Response},
-    routing::get,
+    routing::{get, post},
     Json, Router, TypedHeader,
   },
   axum_server::Handle,
@@ -27,7 +27,7 @@ use {
     caches::DirCache,
     AcmeConfig,
   },
-  std::{cmp::Ordering, str},
+  std::{cmp::Ordering, str, collections::HashMap},
   tokio_stream::StreamExt,
   tower_http::{
     compression::CompressionLayer,
@@ -87,7 +87,7 @@ impl Display for StaticHtml {
   }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 struct InscriptionData {
   number: u64,
   id: InscriptionId,
@@ -98,6 +98,16 @@ struct InscriptionData {
   creator_address: Address,
   content_length: usize,
   content_type: String,
+}
+
+#[derive(Serialize)]
+struct InscriptionsDataResult {
+  inscriptions: HashMap<InscriptionId, InscriptionData>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct InscriptionsDataRequest {
+  ids: Vec<InscriptionId>,
 }
 
 #[derive(Debug, Parser)]
@@ -167,10 +177,7 @@ impl Server {
         .route("/feed.xml", get(Self::feed))
         .route("/input/:block/:transaction/:input", get(Self::input))
         .route("/inscription/:inscription_id", get(Self::inscription))
-        .route(
-          "/inscription-data/:inscription_id",
-          get(Self::inscription_data),
-        )
+        .route("/inscriptions-data/", post(Self::inscriptions_data))
         .route("/inscriptions", get(Self::inscriptions))
         .route("/inscriptions/:from", get(Self::inscriptions_from))
         .route("/install.sh", get(Self::install_script))
@@ -829,61 +836,86 @@ impl Server {
     }
   }
 
-  async fn inscription_data(
-    Extension(config): Extension<Arc<PageConfig>>,
+  async fn inscriptions_data(
+    Extension(page_config): Extension<Arc<PageConfig>>,
     Extension(index): Extension<Arc<Index>>,
-    Path(DeserializeFromStr(inscription_id)): Path<DeserializeFromStr<InscriptionId>>,
-  ) -> ServerResult<Json<InscriptionData>> {
-    let entry = index
-      .get_inscription_entry(inscription_id)?
-      .ok_or_not_found(|| format!("inscription {inscription_id}"))?;
+    RawBody(body): RawBody,
+  ) -> ServerResult<Json<InscriptionsDataResult>> {
+    let body_bytes = hyper::body::to_bytes(body).await.unwrap().to_vec();
+    let body_string = String::from_utf8(body_bytes).unwrap();
+    let request_body = serde_json::from_str::<InscriptionsDataRequest>(&body_string).unwrap();
 
-    let inscription = index
-      .get_inscription_by_id(inscription_id)?
-      .ok_or_not_found(|| format!("inscription {inscription_id}"))?;
+    let inscriptions = request_body.ids;
+    let mut data_map: HashMap<InscriptionId, InscriptionData> = HashMap::new();
+
+    for inscription_id in inscriptions.into_iter() {
+      match Server::get_inscription_data(&index, page_config.chain, inscription_id).await {
+        Ok(inscription_data) => {
+          data_map.insert(inscription_id, inscription_data);
+        }
+        Err(_) => {
+          // skip broken inscriptions
+          continue;
+        }
+      }
+    }
+
+    let inscription_data_result = InscriptionsDataResult {
+      inscriptions: data_map,
+    };
+
+    Ok(Json(inscription_data_result))
+  }
+
+  async fn get_inscription_data(
+    index: &Arc<Index>,
+    chain: Chain,
+    inscription_id: InscriptionId,
+  ) -> Result<InscriptionData> {
+    let entry = index.get_inscription_entry(inscription_id)?.unwrap();
+
+    let inscription = index.get_inscription_by_id(inscription_id)?.unwrap();
 
     let satpoint = index
       .get_inscription_satpoint_by_id(inscription_id)?
-      .ok_or_not_found(|| format!("inscription {inscription_id}"))?;
+      .unwrap();
 
     let output = index
       .get_transaction(satpoint.outpoint.txid)?
-      .ok_or_not_found(|| format!("inscription {inscription_id} current transaction"))?
+      .unwrap()
       .output
       .into_iter()
       .nth(satpoint.outpoint.vout.try_into().unwrap())
-      .ok_or_not_found(|| format!("inscription {inscription_id} current transaction output"))?;
+      .unwrap();
 
     let previous_outpoint = index
       .get_transaction(inscription_id.txid)?
-      .ok_or_not_found(|| format!("inscription {inscription_id} current transaction"))?
+      .unwrap()
       .input
       .into_iter()
       .nth(inscription_id.index.try_into().unwrap())
-      .ok_or_not_found(|| format!("inscription {inscription_id} creation transaction output"))?
+      .unwrap()
       .previous_output;
 
     let previous_output = index
       .get_transaction(previous_outpoint.txid)?
-      .ok_or_not_found(|| format!("inscription {inscription_id} current transaction"))?
+      .unwrap()
       .output
       .into_iter()
       .nth(previous_outpoint.vout.try_into().unwrap())
-      .ok_or_not_found(|| format!("inscription {inscription_id} current transaction output"))?;
+      .unwrap();
 
-    let owner_address = config
-      .chain
+    let owner_address = chain
       .address_from_script(&output.script_pubkey)
       .ok()
       .unwrap();
 
-    let creator_address = config
-      .chain
+    let creator_address = chain
       .address_from_script(&previous_output.script_pubkey)
       .ok()
       .unwrap();
 
-    let insc = InscriptionData {
+    let inscription_data = InscriptionData {
       number: entry.number,
       id: inscription_id,
       owner_address,
@@ -895,7 +927,7 @@ impl Server {
       content_type: inscription.content_type().unwrap_or("").to_string(),
     };
 
-    Ok(Json(insc))
+    Ok(inscription_data)
   }
 
   async fn inscription(
