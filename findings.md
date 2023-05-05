@@ -1,5 +1,6 @@
 # Deterministic inscription transaction hash
-> It is NOT possible to generate the transaction hash of the inscription without the final inscription content because we can't use arbitrary utxos as the input for the reveal transaction.
+> It is NOT possible to precompute the inscription id without the final content.  
+> The reason is that the reveal transaction is coupled to the commit transaction, and tampering the reveal witness data would break this coupling. 
 
 ## Q/A
 1. **Is it true that changing only the witness data does not change the transaction hash?** Yes, that is true. However, such a change would invalidate the transaction because the entire witness data is used to validate whether the previous output can be spent or not (the UTXO created by the commit transaction). Even the script after `OP_FALSE OP_IF...` is included in the validation process.
