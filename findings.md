@@ -16,6 +16,7 @@ P2TR utxos can be spent using either the *key path* or the *script path*.
 
 ### Key Path  
 For example, the following can be signed using the *key path*
+
 ![](p2tr.png)
 
 The **key path** is a simple method of spending a P2TR utxo by using `sign_raw_transaction_with_wallet` with the taproot private key associated with the public key used in the utxo. The resulting signature would be used as the witness data on the transaction input, without requiring the use of additional scripts or conditions.
