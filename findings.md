@@ -92,3 +92,7 @@ let taproot_spend_info = TaprootBuilder::new()
 ```
 
 In this case, a reveal transaction could have either `reveal_script` or `unlocking_script` composing the input witness data. Note how we can't use a script that wasn't added to the merkle tree.
+
+### References
+- [Bitcoin Taproot Explained - About Bitcoin (Youtube)](https://www.youtube.com/watch?v=d82-MPwpiYs)
+- [What is the control block in Taproot? - Michael Folkson (stackexchange)](https://bitcoin.stackexchange.com/questions/107154/what-is-the-control-block-in-taproot)
