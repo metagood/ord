@@ -1,3 +1,6 @@
+use bitcoin::{secp256k1::rand::rngs::StdRng};
+use rand_seeder::Seeder;
+
 use {
   super::*,
   crate::wallet::Wallet,
@@ -6,7 +9,7 @@ use {
     policy::MAX_STANDARD_TX_WEIGHT,
     schnorr::{TapTweak, TweakedKeyPair, TweakedPublicKey, UntweakedKeyPair},
     secp256k1::{
-      self, constants::SCHNORR_SIGNATURE_SIZE, rand, schnorr::Signature, Secp256k1, XOnlyPublicKey,
+      self, constants::SCHNORR_SIGNATURE_SIZE, schnorr::Signature, Secp256k1, XOnlyPublicKey,
     },
     util::key::PrivateKey,
     util::sighash::{Prevouts, SighashCache},
@@ -69,12 +72,15 @@ impl Inscribe {
 
     let inscriptions = index.get_inscriptions(None)?;
 
-    let commit_tx_change = [get_change_address(&client)?, get_change_address(&client)?];
+    let commit_tx_change: [Address; 2] = [
+      Address::from_str("tb1pp7vmkvmycruavuyaqhw4pwce4wc74cht6f42cy50udtrdcn048fqjv56pe")?,
+      Address::from_str("tb1pxw8meptkyve3eal55n55r40qtzy56lmudf24887uamxe8zsenk3q5skmau")?,
+    ];
 
     let reveal_tx_destination = self
       .destination
       .map(Ok)
-      .unwrap_or_else(|| get_change_address(&client))?;
+      .unwrap_or_else(|| Address::from_str("tb1pxfhg9e96a4pfevqhwrhyg3hctckcvugxjk9cjz95l8k0h46np3gsmdk6qh"))?;
 
     let (unsigned_commit_tx, reveal_tx, recovery_key_pair) =
       Inscribe::create_inscription_transactions(
@@ -115,6 +121,9 @@ impl Inscribe {
       let signed_raw_commit_tx = client
         .sign_raw_transaction_with_wallet(&unsigned_commit_tx, None, None)?
         .hex;
+
+      print_json(unsigned_commit_tx)?;
+      print_json(reveal_tx.clone())?;
 
       let commit = client
         .send_raw_transaction(&signed_raw_commit_tx)
@@ -188,14 +197,23 @@ impl Inscribe {
     }
 
     let secp256k1 = Secp256k1::new();
-    let key_pair = UntweakedKeyPair::new(&secp256k1, &mut rand::thread_rng());
+    let mut rng: StdRng = Seeder::from("cow").make_rng();
+
+    let key_pair = UntweakedKeyPair::new(&secp256k1, &mut rng);
     let (public_key, _parity) = XOnlyPublicKey::from_keypair(&key_pair);
+
+    println!("public key: {}", public_key);
+    println!("satpoint: {}", satpoint);
 
     let reveal_script = inscription.append_reveal_script(
       script::Builder::new()
         .push_slice(&public_key.serialize())
         .push_opcode(opcodes::all::OP_CHECKSIG),
     );
+
+    let unlocking_script = script::Builder::new()
+    .push_slice(&public_key.serialize())
+    .push_opcode(opcodes::all::OP_CHECKSIG).into_script();
 
     let taproot_spend_info = TaprootBuilder::new()
       .add_leaf(0, reveal_script.clone())
@@ -208,6 +226,8 @@ impl Inscribe {
       .expect("should compute control block");
 
     let commit_tx_address = Address::p2tr_tweaked(taproot_spend_info.output_key(), network);
+
+    println!("commit tx address: {}", commit_tx_address);
 
     let (_, reveal_fee) = Self::build_reveal_transaction(
       &control_block,
@@ -302,6 +322,9 @@ impl Inscribe {
         "reveal transaction weight greater than {MAX_STANDARD_TX_WEIGHT} (MAX_STANDARD_TX_WEIGHT): {reveal_weight}"
       );
     }
+
+    println!("commit txid: {}", unsigned_commit_tx.txid());
+    println!("reveal txid: {}", reveal_tx.txid());
 
     Ok((unsigned_commit_tx, reveal_tx, recovery_key_pair))
   }
