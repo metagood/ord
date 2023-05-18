@@ -18,6 +18,7 @@ pub mod balance;
 pub mod cardinals;
 pub mod create;
 pub(crate) mod inscribe;
+pub mod inscribe_chain;
 pub mod inscriptions;
 pub mod outputs;
 pub mod receive;
@@ -51,6 +52,8 @@ pub(crate) enum Wallet {
   Outputs,
   #[clap(about = "List unspent cardinal outputs in wallet")]
   Cardinals,
+  #[clap(about = "...")]
+  InscribeChain(inscribe_chain::InscribeChain),
 }
 
 impl Wallet {
@@ -58,7 +61,8 @@ impl Wallet {
     match self {
       Self::Balance => balance::run(options),
       Self::Create(create) => create.run(options),
-      Self::Inscribe(inscribe) => inscribe.run(options),
+      Self::Inscribe(inscribe) => inscribe.run(options).map(|_| Ok(()))?,
+      Self::InscribeChain(inscribe_chain) => inscribe_chain.run(options),
       Self::Inscriptions => inscriptions::run(options),
       Self::Receive => receive::run(options),
       Self::Restore(restore) => restore.run(options),

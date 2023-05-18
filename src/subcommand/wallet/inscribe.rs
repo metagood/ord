@@ -21,8 +21,8 @@ use {
 };
 
 #[derive(Serialize)]
-struct Output {
-  commit: Txid,
+pub struct Output {
+  pub commit: Txid,
   inscription: InscriptionId,
   parent: Option<InscriptionId>,
   reveal: Txid,
@@ -58,13 +58,24 @@ pub(crate) struct Inscribe {
 }
 
 impl Inscribe {
-  pub(crate) fn run(self, options: Options) -> Result {
+  pub(crate) fn run(self, options: Options) -> Result<Output> {
     let index = Index::open(&options)?;
     index.update()?;
 
     let client = options.bitcoin_rpc_client_for_wallet_command(false)?;
 
     let mut utxos = index.get_unspent_outputs(Wallet::load(&options)?)?;
+
+    if let Some(satpoint) = &self.satpoint {
+      if utxos.get(&satpoint.outpoint).is_none() {
+        let mempool_transaction = client.get_raw_transaction(&satpoint.outpoint.txid, None)?;
+        let mempool_outpoint_amount =
+          Amount::from_sat(mempool_transaction.output[satpoint.outpoint.vout as usize].value);
+
+        utxos.insert(satpoint.outpoint, mempool_outpoint_amount);
+        println!("Using a satpoint pending in the mempool.");
+      }
+    }
 
     let inscriptions = index.get_inscriptions(None)?;
 
@@ -103,7 +114,7 @@ impl Inscribe {
       .map(Ok)
       .unwrap_or_else(|| get_change_address(&client))?;
 
-    let (unsigned_commit_tx, partially_signed_reveal_tx, _recovery_key_pair) =
+    let (unsigned_commit_tx, partially_signed_reveal_tx, recovery_key_pair) =
       Inscribe::create_inscription_transactions(
         self.satpoint,
         parent,
@@ -140,12 +151,18 @@ impl Inscribe {
         fees,
       })?;
 
-      return Ok(());
+      return Ok(Output {
+        commit: unsigned_commit_tx.txid(),
+        reveal: partially_signed_reveal_tx.txid(),
+        inscription: partially_signed_reveal_tx.txid().into(),
+        parent: self.parent,
+        fees,
+      });
     }
 
-    // if !self.no_backup {
-    // Inscribe::backup_recovery_key(&client, recovery_key_pair, options.chain().network())?;
-    // }
+    if !self.no_backup {
+      Inscribe::backup_recovery_key(&client, recovery_key_pair, options.chain().network())?;
+    }
 
     let signed_raw_commit_tx = client
       .sign_raw_transaction_with_wallet(&unsigned_commit_tx, None, None)?
@@ -182,7 +199,13 @@ impl Inscribe {
       fees,
     })?;
 
-    Ok(())
+    Ok(Output {
+      commit,
+      reveal,
+      inscription,
+      parent: self.parent,
+      fees,
+    })
   }
 
   fn calculate_fee(tx: &Transaction, utxos: &BTreeMap<OutPoint, Amount>) -> u64 {
@@ -410,7 +433,7 @@ impl Inscribe {
     Ok((unsigned_commit_tx, reveal_tx, recovery_key_pair))
   }
 
-  fn _backup_recovery_key(
+  fn backup_recovery_key(
     client: &Client,
     recovery_key_pair: TweakedKeyPair,
     network: Network,
