@@ -8,6 +8,8 @@ pub(crate) struct Split {
   #[clap(long)]
   pub(crate) fee: u64,
   #[clap(long)]
+  pub(crate) amount: u64,
+  #[clap(long)]
   pub(crate) destination: Address,
   #[clap()]
   pub(crate) outpoint: OutPoint,
@@ -31,25 +33,25 @@ impl Split {
 
     let output_tx = client.get_raw_transaction(&self.outpoint.txid, None)?;
     let output_sats = output_tx.output[self.outpoint.vout as usize].value;
-    let new_outputs_quantity = output_sats / 11_000;
+    let new_outputs_quantity = output_sats / self.amount;
 
     let to_address = self.destination.clone();
     let output_locking_script = to_address.script_pubkey();
     let mut outputs: Vec<TxOut> = vec![];
 
     // how many outputs to remove from the transaction to pay the fee.
-    let n: u64 = self.fee / 11_000 + 1;
+    let n: u64 = self.fee / self.amount + 1;
 
     for _ in n..new_outputs_quantity {
       let txout = TxOut {
         script_pubkey: output_locking_script.clone(),
-        value: 11_000,
+        value: self.amount,
       };
 
       outputs.push(txout);
     }
 
-    let change_amount = output_sats - (new_outputs_quantity - n) * 11_000 - self.fee;
+    let change_amount = output_sats - (new_outputs_quantity - n) * self.amount - self.fee;
     let change = TxOut {
       script_pubkey: output_locking_script.clone(),
       value: change_amount,
