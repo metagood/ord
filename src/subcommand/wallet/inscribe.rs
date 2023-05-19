@@ -25,7 +25,7 @@ pub struct Output {
   pub commit: Txid,
   inscription: InscriptionId,
   parent: Option<InscriptionId>,
-  reveal: Txid,
+  pub reveal: Txid,
   fees: u64,
 }
 
@@ -82,9 +82,12 @@ impl Inscribe {
     let (parent, commit_input_offset) = if let Some(parent_id) = self.parent {
       if let Some(satpoint) = index.get_inscription_satpoint_by_id(parent_id)? {
         if !utxos.contains_key(&satpoint.outpoint) {
-          return Err(anyhow!(format!(
-            "unrelated parent {parent_id} not accepting mailman's child" // for the germans: "Kuckuckskind"
-          )));
+          let mempool_transaction = client.get_raw_transaction(&satpoint.outpoint.txid, None)?;
+          let mempool_outpoint_amount =
+            Amount::from_sat(mempool_transaction.output[satpoint.outpoint.vout as usize].value);
+
+          utxos.insert(satpoint.outpoint, mempool_outpoint_amount);
+          println!("Using a parent satpoint pending in the mempool.");
         }
 
         let output = index
@@ -190,6 +193,19 @@ impl Inscribe {
       txid: reveal,
       index: 0,
     };
+
+    // update parent satpoint (only needed for inscribe-chain)
+    if let Some(parent_id) = self.parent {
+      let parent_new_satpoint = SatPoint {
+        outpoint: OutPoint {
+          txid: reveal,
+          vout: 0,
+        },
+        offset: 0,
+      };
+
+      index.insert_inscription_satpoint(parent_id, parent_new_satpoint)?;
+    }
 
     print_json(Output {
       commit,

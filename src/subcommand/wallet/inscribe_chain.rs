@@ -58,16 +58,17 @@ impl InscribeChain {
 
       let inscription = inscribe.run(options.clone())?;
 
+      // update inscribe satpoint
       if satpoint.offset >= 1 {
-        satpoint.offset -= 1
-      };
+        satpoint.offset -= 1;
 
-      satpoint = SatPoint {
-        outpoint: OutPoint {
-          txid: inscription.commit,
-          vout: 0,
-        },
-        offset: satpoint.offset,
+        satpoint = SatPoint {
+          outpoint: OutPoint {
+            txid: inscription.commit,
+            vout: 0,
+          },
+          offset: satpoint.offset,
+        };
       };
     }
 
