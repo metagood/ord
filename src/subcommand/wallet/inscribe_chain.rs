@@ -1,3 +1,5 @@
+use std::fs::{DirBuilder, DirEntry};
+
 use super::{inscribe::Inscribe, *};
 
 #[derive(Debug, Parser)]
@@ -33,9 +35,13 @@ impl InscribeChain {
     let mut satpoint = self.satpoint;
 
     let dir = self.dir.read_dir()?;
-    let files: Vec<_> = dir.collect();
+    let mut files: Vec<DirEntry> = dir
+      .map(|f| f.unwrap())
+      .filter(|file| file.path().is_file())
+      .collect();
+    files.sort_by(|a, b| get_number_from_dir_entry(a).cmp(&get_number_from_dir_entry(b)));
 
-    if files.len() as u64 > satpoint.offset {
+    if files.len() as u64 > satpoint.offset + 1 {
       return Err(anyhow!(
         "Not enough sats: folder has {} files and output offset is {}",
         files.len(),
@@ -43,22 +49,44 @@ impl InscribeChain {
       ));
     }
 
+    DirBuilder::new()
+      .create(&self.dir.join("inscribed"))
+      .unwrap_or_default();
+
     for file in files {
+      let file_path = file.path();
+
+      if file_path.is_dir() {
+        continue;
+      };
+
       let inscribe = Inscribe {
         dry_run: false,
         fee_rate: self.fee_rate,
         commit_fee_rate: self.commit_fee_rate,
         destination: self.destination.clone(),
-        file: file?.path(),
+        file: file_path.clone(),
         no_backup: self.no_backup,
         no_limit: self.no_limit,
         satpoint: Some(satpoint),
         parent: self.parent.clone(),
       };
 
-      let inscription = inscribe.run(options.clone())?;
+      println!("Inscribing {} at {}", file_path.clone().display(), satpoint);
+      let inscription = inscribe.run(options.clone()).context(format!(
+        "Wait for a new block to be mined and resume the operation running:\n{}\n",
+        self.get_resume_cli_command(satpoint)
+      ))?;
 
-      // update inscribe satpoint
+      fs::rename(
+        file_path.clone(),
+        &self
+          .dir
+          .join("inscribed")
+          .join(file_path.file_name().unwrap()),
+      )?;
+
+      // update satpoint to inscribe for next iteration
       if satpoint.offset >= 1 {
         satpoint.offset -= 1;
 
@@ -74,4 +102,33 @@ impl InscribeChain {
 
     Ok(())
   }
+
+  fn get_resume_cli_command(&self, updated_satpoint: SatPoint) -> String {
+    let mut cli = format!(
+      "ord wallet inscribe --fee-rate {:.1}",
+      self.fee_rate.fee(10 as usize).to_sat() as f64 / 10.0
+    );
+    if let Some(parent) = self.parent {
+      cli.push_str(&format!(" --parent {}", parent));
+    }
+    if let Some(destination) = &self.destination {
+      cli.push_str(&format!(" --destination {}", destination));
+    }
+    cli.push_str(&format!(" --satpoint {}", updated_satpoint));
+    cli.push_str(&format!(" {}", self.dir.display()));
+
+    return cli;
+  }
+}
+
+fn get_number_from_dir_entry(dir_entry: &DirEntry) -> u64 {
+  dir_entry
+    .path()
+    .file_stem()
+    .unwrap()
+    .to_str()
+    .unwrap()
+    .parse()
+    .context("Name the files in the format: <number>.<extension>, e.g. 1.json")
+    .unwrap()
 }

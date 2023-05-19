@@ -6,7 +6,7 @@ use {
 #[derive(Debug, Parser)]
 pub(crate) struct Split {
   #[clap(long)]
-  pub(crate) fee: u64,
+  pub(crate) fee_rate: FeeRate,
   #[clap(long)]
   pub(crate) amount: u64,
   #[clap(long)]
@@ -39,10 +39,7 @@ impl Split {
     let output_locking_script = to_address.script_pubkey();
     let mut outputs: Vec<TxOut> = vec![];
 
-    // how many outputs to remove from the transaction to pay the fee.
-    let n: u64 = self.fee / self.amount + 1;
-
-    for _ in n..new_outputs_quantity {
+    for _ in 0..new_outputs_quantity {
       let txout = TxOut {
         script_pubkey: output_locking_script.clone(),
         value: self.amount,
@@ -51,19 +48,22 @@ impl Split {
       outputs.push(txout);
     }
 
-    let change_amount = output_sats - (new_outputs_quantity - n) * self.amount - self.fee;
-    let change = TxOut {
-      script_pubkey: output_locking_script.clone(),
-      value: change_amount,
-    };
-    outputs.push(change);
-
-    let transaction = Transaction {
+    let mut transaction = Transaction {
       version: 1,
       lock_time: PackedLockTime::ZERO,
       input: vec![txin],
       output: outputs,
     };
+
+    let fee = self.fee_rate.fee(transaction.vsize());
+    transaction.output[(new_outputs_quantity - 1) as usize].value = transaction.output
+      [(new_outputs_quantity - 1) as usize]
+      .value
+      .checked_sub(fee.to_sat())
+      .context(format!(
+        "fees higher than output amount: {} > {}",
+        fee, self.amount
+      ))?;
 
     let signed_tx = client
       .sign_raw_transaction_with_wallet(&transaction, None, None)?

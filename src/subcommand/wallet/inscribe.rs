@@ -73,7 +73,7 @@ impl Inscribe {
           Amount::from_sat(mempool_transaction.output[satpoint.outpoint.vout as usize].value);
 
         utxos.insert(satpoint.outpoint, mempool_outpoint_amount);
-        println!("Using a satpoint pending in the mempool.");
+        //println!("Using a satpoint pending in the mempool.");
       }
     }
 
@@ -87,7 +87,7 @@ impl Inscribe {
             Amount::from_sat(mempool_transaction.output[satpoint.outpoint.vout as usize].value);
 
           utxos.insert(satpoint.outpoint, mempool_outpoint_amount);
-          println!("Using a parent satpoint pending in the mempool.");
+          //println!("Using a parent satpoint pending in the mempool.");
         }
 
         let output = index
