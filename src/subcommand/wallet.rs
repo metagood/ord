@@ -25,6 +25,7 @@ pub mod receive;
 mod restore;
 pub mod sats;
 pub mod send;
+pub mod split;
 pub(crate) mod transaction_builder;
 pub mod transactions;
 
@@ -54,6 +55,8 @@ pub(crate) enum Wallet {
   Cardinals,
   #[clap(about = "...")]
   InscribeChain(inscribe_chain::InscribeChain),
+  #[clap(about = "...")]
+  Split(split::Split),
 }
 
 impl Wallet {
@@ -71,6 +74,7 @@ impl Wallet {
       Self::Transactions(transactions) => transactions.run(options),
       Self::Outputs => outputs::run(options),
       Self::Cardinals => cardinals::run(options),
+      Self::Split(split) => split.run(options),
     }
   }
 }
