@@ -3,6 +3,12 @@
 
 ![](chain.png)
 
+## Requirements
+1. utxo containing special sats must be padded with at least 1,000 normal sats at the beginning
+2. if the utxo has more than one range of special sats, start with the last sat of the last range, because everything below that will be trimmed.
+3. for each iteration, 10 inscriptions being created in one block, wallet must have 10 additional available utxos with enough sats for each inscriptions because 1 sat will come from the special utxo and the other 9,999 will come from any other normal utxo available in the wallet.
+4. files to be inscribed must be named as `<number>.<extension>`, the inscribing will take place in that order.
+
 ## Example
 1. Create the files to be inscribed:
     ```bash
@@ -40,7 +46,7 @@
     7f320d87dd2d011ba9a3dbc66c46aed4b0b3a9a0a4d1c93fe3ed97ab280463f5:8:10014
     ```
 3. Run the `inscribe-chain` command
-    > **note**
+    > **Note**
     > You must have at least 10 additional available utxos, each containing a minimum of 12,000 sats, when running this command. If you don't have enough, use the `ord wallet split` command to break one of your larger utxos into several smaller ones..
 
     ```bash
@@ -49,7 +55,7 @@
     The sats `24015`, `24014`, `24013`, `24012`, `24011`, `24010`, `24009`, `24008`, `24007` and `24006` were extracted from the special utxo and given to the inscribed files `1.json`, `2.json`, ... `10.json` in this order.
 
 4. Now we have to **wait for the block to be mined** and then run the next command (that was given when the previous completed):
-    > **warning**
+    > **Warning**
     > If you run the following command while the previous transaction chain is still pending in the mempool, you will be able to inscribe only 2 more inscriptions and will have a commit transaction without the reveal. In other words, it will waste valuable special sats and will require a manual task to fix the transaction chain.
     ```bash
     ord wallet inscribe-chain --fee-rate 1 --satpoint d3ecd1d753e09d2ca3a69fe1a36a7b829e3c096d44f101d11c5a3f6aef1e757b:0:10004 files/
