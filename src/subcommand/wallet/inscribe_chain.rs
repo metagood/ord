@@ -30,6 +30,9 @@ pub(crate) struct InscribeChain {
   pub(crate) parent: Option<InscriptionId>,
 }
 
+// maximum of 12
+const INSCRIPTION_PER_BLOCK: usize = 10;
+
 impl InscribeChain {
   pub(crate) fn run(self, options: Options) -> Result {
     let mut satpoint = self.satpoint;
@@ -53,12 +56,9 @@ impl InscribeChain {
       .create(&self.dir.join("inscribed"))
       .unwrap_or_default();
 
-    for file in files {
+    for i in 0..(files.len().min(INSCRIPTION_PER_BLOCK)) {
+      let file = files.get(i).unwrap();
       let file_path = file.path();
-
-      if file_path.is_dir() {
-        continue;
-      };
 
       let inscribe = Inscribe {
         dry_run: false,
@@ -73,10 +73,7 @@ impl InscribeChain {
       };
 
       println!("Inscribing {} at {}", file_path.clone().display(), satpoint);
-      let inscription = inscribe.run(options.clone()).context(format!(
-        "Wait for a new block to be mined and resume the operation running:\n{}\n",
-        self.get_resume_cli_command(satpoint)
-      ))?;
+      let inscription = inscribe.run(options.clone())?;
 
       fs::rename(
         file_path.clone(),
@@ -100,12 +97,20 @@ impl InscribeChain {
       };
     }
 
+    println!("\nSuccess!");
+    println!(
+      "{} new inscriptions pending in the mempool.",
+      files.len().min(INSCRIPTION_PER_BLOCK)
+    );
+    println!("\nTo continue inscribing, wait for the block to be mined and run:");
+    println!("{}", self.get_resume_cli_command(satpoint));
+
     Ok(())
   }
 
   fn get_resume_cli_command(&self, updated_satpoint: SatPoint) -> String {
     let mut cli = format!(
-      "ord wallet inscribe --fee-rate {:.1}",
+      "ord wallet inscribe-chain --fee-rate {}",
       self.fee_rate.fee(10 as usize).to_sat() as f64 / 10.0
     );
     if let Some(parent) = self.parent {
