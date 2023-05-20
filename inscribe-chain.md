@@ -52,7 +52,7 @@
     ```bash
     ord wallet inscribe-chain --fee-rate=1.0 --satpoint=7f320d87dd2d011ba9a3dbc66c46aed4b0b3a9a0a4d1c93fe3ed97ab280463f5:8:10014 files/
     ```
-    The sats `24015`, `24014`, `24013`, `24012`, `24011`, `24010`, `24009`, `24008`, `24007` and `24006` were extracted from the special utxo and given to the inscribed files `1.json`, `2.json`, ... `10.json` in this order.
+    The sats `10015`, `10014`, `10013`, `10012`, `10011`, `10010`, `10009`, `10008`, `10007` and `10006` were extracted from the special utxo and given to the inscribed files `1.json`, `2.json`, ... `10.json` in this order.
 
 4. Now we have to **wait for the block to be mined** and then run the next command (that was given when the previous completed):
     > **Warning**
@@ -60,3 +60,9 @@
     ```bash
     ord wallet inscribe-chain --fee-rate 1 --satpoint d3ecd1d753e09d2ca3a69fe1a36a7b829e3c096d44f101d11c5a3f6aef1e757b:0:10004 files/
     ```
+
+And this is the full chain:  
+https://mempool.space/pt/signet/tx/58a7f430fbd5933d7f2dbcb9b2e1b4aaeea3af47a965c1a8917fa05bbf854a45#flow=&vin=0  
+
+![](mempool.png)
+If we navigate through the first outputs we can see all the 10015 to 10001 sats being added to the commit outputs and then to the reveal output.
