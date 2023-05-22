@@ -186,6 +186,7 @@ impl Inscribe {
     let secp256k1 = Secp256k1::new();
     let key_pair = UntweakedKeyPair::new(&secp256k1, &mut rand::thread_rng());
     let (public_key, _parity) = XOnlyPublicKey::from_keypair(&key_pair);
+    println!("public key: {}", public_key);
 
     let reveal_script = inscription.append_reveal_script(
       script::Builder::new()
