@@ -31,7 +31,7 @@ impl Create {
     let mnemonic = Mnemonic::from_entropy(&entropy)?;
     let seed = mnemonic.to_seed(self.passphrase.clone());
     let secp = Secp256k1::new();
-    let root = bip32::ExtendedPrivKey::new_master(Network::Testnet, &seed)?;
+    let root = bip32::ExtendedPrivKey::new_master(options.chain().network(), &seed)?;
 
     let xprv = root.derive_priv(&secp, &DerivationPath::from_str("m/86'/1'/0'")?)?;
     let xpub = ExtendedPubKey::from_priv(&secp, &xprv);
