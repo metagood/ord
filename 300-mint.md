@@ -30,10 +30,15 @@ ord wallet create
 }
 ```
 2.2 Fund it with just enough for one inscription (`0.00015 BTC`).  
-2.3 Create the reveal txt file and inscribe it using `--dry-run` to not broadcast it. [[why?]()]
+2.3 Create the reveal txt file and inscribe it using `--dry-run` to not broadcast it.
 ```
 echo "999" > reveal.txt
-ord wallet inscribe --fee-rate=1.0 --dry-run reveal.txt
+
+ord wallet inscribe \
+--fee-rate 1.0 \
+--destination tb1p7rpgexms8p35vyvk8zcs22mgp79sqvgf6q7na25sjjefpqj2whzsvkzesf \
+--dry-run \
+reveal.txt
 ```
 ```
 {
@@ -75,7 +80,10 @@ ord wallet create
 3.2 Fund it with enough for one inscription (vary according to file size).  
 3.3 Get the file to be inscribed as the parent and inscribe it.
 ```
-ord wallet inscribe --fee-rate=1.0 parent.txt
+ord wallet inscribe \
+--fee-rate 1.0 \
+--destination tb1p7rpgexms8p35vyvk8zcs22mgp79sqvgf6q7na25sjjefpqj2whzsvkzesf \
+parent.txt
 ```
 ```json
 {
@@ -93,7 +101,10 @@ ord wallet inscribe --fee-rate=1.0 parent.txt
 ```
 3.5 Split the `0.045 BTC` UTXO into 300 UTXOs of `0.00014990 BTC`.
 ```
-ord wallet split --fee-rate=1.0 --amount=14990 --destination=tb1phca60mcg0pg5c2fhtck384pqn86rt5ljsen635rrtqezpxa7pcws7dz3y8 06aac693f19f8d384764bfe090719d4b373ea11d536b2ef337fc3f6f1334e916:0
+ord wallet split \
+--fee-rate 1.0 \
+--amount 14990 \
+06aac693f19f8d384764bfe090719d4b373ea11d536b2ef337fc3f6f1334e916:0
 ```
 3.6 Generate the 300 files to be inscribed
 ```
@@ -117,7 +128,12 @@ Make sure that:
 
 3.9 Inscribe the 300 files giving one important sat to each
 ```
-ord wallet inscribe-chain --fee-rate=1.5 --parent=bd89bcea3f82864df2c8bc66c94949c54ad13c13e939d37b8a1b168632948eddi0 --satpoint=967d433a2068f742b25e35e106c9d476d70632cb291c3b8b498adf699d938de9:0:7519 300-inscriptions/
+ord wallet inscribe-chain \
+--fee-rate 1.5 \
+--parent bd89bcea3f82864df2c8bc66c94949c54ad13c13e939d37b8a1b168632948eddi0 \
+--destination tb1phca60mcg0pg5c2fhtck384pqn86rt5ljsen635rrtqezpxa7pcws7dz3y8 \
+--satpoint 967d433a2068f742b25e35e106c9d476d70632cb291c3b8b498adf699d938de9:0:7519 \
+300-inscriptions/
 ```
 ```
 Inscribing 300-inscriptions/1.json at 967d433a2068f742b25e35e106c9d476d70632cb291c3b8b498adf699d938de9:0:7519
@@ -164,13 +180,14 @@ ord wallet inscribe-chain --fee-rate 1.5 --parent bd89bcea3f82864df2c8bc66c94949
 ```
 Important to note
 * `--fee-rate` is set to `1.5` instead of `1.0` to avoid the possibility of getting "min relay fee not met" error in the middle of the transactions chain
+* `--destination` must be the address given when the wallet was created on step `3.1`
 * `--satpoint` has to point to the last important sat position, `967d...8de9:0:7519`, because this command will consume all 300 sats above it, including it
 * Upon completion, the `inscribe-chain` will give the next command to be run. It's highly important to wait for the current transaction chain to be mined before running this new command, otherwise the next chain will be broken in the middle with the error "transaction chain size limit exceeded"
 
 3.10 Wait for the previous transaction chain to be mined  
 3.11 Run the next `inscribe-chain` command
 ```
-ord wallet inscribe-chain --fee-rate 1.5 --parent bd89bcea3f82864df2c8bc66c94949c54ad13c13e939d37b8a1b168632948eddi0 --satpoint a2a627094403497b477dbeec56ab0cefe2a662f57762e485dd815da0da8ea69f:0:7509 300-inscriptions/
+ord wallet inscribe-chain --fee-rate 1.5 --parent bd89bcea3f82864df2c8bc66c94949c54ad13c13e939d37b8a1b168632948eddi0 --destination tb1phca60mcg0pg5c2fhtck384pqn86rt5ljsen635rrtqezpxa7pcws7dz3y8 --satpoint a2a627094403497b477dbeec56ab0cefe2a662f57762e485dd815da0da8ea69f:0:7509 300-inscriptions/
 ```
 3.12 Loop through steps `3.10` and `3.11` until the folder `300-inscriptions` has no more files left to be inscribed.
 

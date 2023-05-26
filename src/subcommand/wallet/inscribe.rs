@@ -60,6 +60,10 @@ pub(crate) struct Inscribe {
 
 impl Inscribe {
   pub(crate) fn run(self, options: Options) -> Result<Output> {
+    if self.destination.is_none() {
+      bail!("--destination is required");
+    }
+
     let index = Index::open(&options)?;
     index.update()?;
 
