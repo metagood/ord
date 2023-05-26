@@ -1,3 +1,5 @@
+use bitcoincore_rpc::RawTx;
+
 use {
   super::*,
   crate::wallet::Wallet,
@@ -103,6 +105,13 @@ impl Inscribe {
         inscription: reveal_tx.txid().into(),
         fees,
       })?;
+
+      let signed_raw_commit_tx = client
+        .sign_raw_transaction_with_wallet(&unsigned_commit_tx, None, None)?
+        .hex;
+
+      println!("commit tx hex\n{}\n", hex::encode(signed_raw_commit_tx));
+      println!("reveal tx hex\n{}", reveal_tx.raw_hex());
     } else {
       if !self.no_backup {
         Inscribe::backup_recovery_key(&client, recovery_key_pair, options.chain().network())?;
