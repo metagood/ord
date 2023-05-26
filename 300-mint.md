@@ -100,3 +100,28 @@ d48bc91b279489b1bef8eac5b448c66548ac7d75def3fe0a5c96df9c4dd7935f:0
 ```
 ord wallet split --fee-rate=1.0 --amount=14990 --destination=tb1phca60mcg0pg5c2fhtck384pqn86rt5ljsen635rrtqezpxa7pcws7dz3y8 06aac693f19f8d384764bfe090719d4b373ea11d536b2ef337fc3f6f1334e916:0
 ```
+3.7 Create a folder to store all 300 files to be inscribed
+```
+mkdir 300-inscriptions
+```
+3.8 Create the files for the children inscriptions having the format:
+```json
+{
+   "use_p": 1,
+   "params": ["tokenID=<TOKEN_ID>"]
+}
+```
+Use the following bash script to do that
+```bash
+#!/bin/bash
+
+for ((i=1; i<=300; i++)); do
+    filename="${i}.json"
+    filepath="300-inscriptions/${filename}"
+    tokenID=$i
+
+    echo '{
+   "use_p": 1,
+   "params": ["tokenID='$tokenID'"]
+}' > "$filepath"
+```
