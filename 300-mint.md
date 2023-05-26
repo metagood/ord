@@ -4,8 +4,9 @@
 Make sure to have `bitcoind` running, `rust` installed and no previous `ord` installation.  
 1.1 Building `ord`
 ```
-git@github.com:metagood/ord.git
+git clone git@github.com:metagood/ord.git
 git checkout ord-pc-logfile-052
+
 cargo build --release
 ```
 
@@ -28,7 +29,7 @@ ord wallet create
   "passphrase": ""
 }
 ```
-2.2 Fund it with just enough for one inscription (> `11_000 sats`).  
+2.2 Fund it with just enough for one inscription (`0.00015 BTC`).  
 2.3 Create the reveal txt file and inscribe it using `--dry-run` to not broadcast it. [[why?]()]
 ```
 echo "999" > reveal.txt
@@ -52,4 +53,41 @@ reveal tx hex
 ```
 mv ~/.bitcoin/wallets/ord ~/.bitcoin/wallets/ord-reveal-inscription
 ```
-## Creating the 300 inscriptions
+## 3. Creating the 300 inscriptions
+> **Note**
+> Only 20 will be created on this example
+
+3.1 Create a new ord wallet (restarting `bitcoind` is required)
+```
+killall bitcoind
+bitcoind --daemon
+
+ord wallet create
+```
+```json
+{
+  "mnemonic": "brass knife empty issue submit portion need razor lend undo despair pelican",
+  "address": "tb1phca60mcg0pg5c2fhtck384pqn86rt5ljsen635rrtqezpxa7pcws7dz3y8",
+  "public_key": "0358bfbc7266e6e997dd7dee379b6be7e057a54d634dfcd51e9bdd112f0450f56a",
+  "passphrase": ""
+}
+```
+3.2 Fund it with enough for one inscription (vary according to file size).  
+3.3 Get the file to be inscribed as the parent and inscribe it.
+```
+ord wallet inscribe --fee-rate=1.0 parent.txt
+```
+```
+{
+  "commit": "b7dfef2f97c626f75b1d02c9ca9f759dfc5419e245283c46cbd8befb4ec4d283",
+  "inscription": "bd89bcea3f82864df2c8bc66c94949c54ad13c13e939d37b8a1b168632948eddi0",
+  "reveal": "bd89bcea3f82864df2c8bc66c94949c54ad13c13e939d37b8a1b168632948edd",
+  "fees": 292
+}
+```
+3.4 Transfer the important UTXO to this wallet.  
+3.5 Transfer `300 x 0.00015 = 0.045 BTC` to this wallet.  
+3.6 Split the `0.045 BTC` UTXO into 300 UTXOs of `0.00014990 BTC`.
+```
+ord wallet split --fee-rate=1.0 --amount=14950
+```
