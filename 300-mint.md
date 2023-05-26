@@ -54,7 +54,7 @@ reveal tx hex
 mv ~/.bitcoin/wallets/ord ~/.bitcoin/wallets/ord-reveal-inscription
 ```
 ## 3. Creating the 300 inscriptions
-> **Note**
+> **Note**  
 > Only 20 will be created on this example
 
 3.1 Create a new ord wallet (restarting `bitcoind` is required)
@@ -77,7 +77,7 @@ ord wallet create
 ```
 ord wallet inscribe --fee-rate=1.0 parent.txt
 ```
-```
+```json
 {
   "commit": "b7dfef2f97c626f75b1d02c9ca9f759dfc5419e245283c46cbd8befb4ec4d283",
   "inscription": "bd89bcea3f82864df2c8bc66c94949c54ad13c13e939d37b8a1b168632948eddi0",
@@ -85,9 +85,18 @@ ord wallet inscribe --fee-rate=1.0 parent.txt
   "fees": 292
 }
 ```
-3.4 Transfer the important UTXO to this wallet.  
-3.5 Transfer `300 x 0.00015 = 0.045 BTC` to this wallet.  
+3.4 Transfer the important UTXO to this wallet.
+```sh
+# txhash:vout
+d48bc91b279489b1bef8eac5b448c66548ac7d75def3fe0a5c96df9c4dd7935f:0
+```
+3.5 Transfer `300 x 0.00015 = 0.045 BTC` to this wallet.
+```sh
+# Using a 20 x 0.00015 = 0.003 BTC UTXO in this example
+# txhash:vout
+06aac693f19f8d384764bfe090719d4b373ea11d536b2ef337fc3f6f1334e916:0
+```
 3.6 Split the `0.045 BTC` UTXO into 300 UTXOs of `0.00014990 BTC`.
 ```
-ord wallet split --fee-rate=1.0 --amount=14950
+ord wallet split --fee-rate=1.0 --amount=14990 --destination=tb1phca60mcg0pg5c2fhtck384pqn86rt5ljsen635rrtqezpxa7pcws7dz3y8 06aac693f19f8d384764bfe090719d4b373ea11d536b2ef337fc3f6f1334e916:0
 ```
