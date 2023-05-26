@@ -23,8 +23,6 @@ pub(crate) struct InscribeChain {
   )]
   pub(crate) no_limit: bool,
   #[clap(long, help = "Don't sign or broadcast transactions.")]
-  pub(crate) dry_run: bool,
-  #[clap(long, help = "Send inscription to <DESTINATION>.")]
   pub(crate) destination: Option<Address>,
   #[clap(long, help = "Establish parent relationship with <PARENT>.")]
   pub(crate) parent: Option<InscriptionId>,

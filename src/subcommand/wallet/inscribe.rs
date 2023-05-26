@@ -1,4 +1,5 @@
 use bitcoin::SchnorrSig;
+use bitcoincore_rpc::RawTx;
 
 use {
   super::*,
@@ -153,6 +154,13 @@ impl Inscribe {
         parent: self.parent,
         fees,
       })?;
+
+      let signed_raw_commit_tx = client
+        .sign_raw_transaction_with_wallet(&unsigned_commit_tx, None, None)?
+        .hex;
+
+      println!("commit tx hex\n{}\n", hex::encode(signed_raw_commit_tx));
+      println!("reveal tx hex\n{}", partially_signed_reveal_tx.raw_hex());
 
       return Ok(Output {
         commit: unsigned_commit_tx.txid(),
