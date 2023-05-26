@@ -82,7 +82,7 @@ ord wallet create
 ```
 ord wallet inscribe \
 --fee-rate 1.0 \
---destination tb1p7rpgexms8p35vyvk8zcs22mgp79sqvgf6q7na25sjjefpqj2whzsvkzesf \
+--destination tb1phca60mcg0pg5c2fhtck384pqn86rt5ljsen635rrtqezpxa7pcws7dz3y8 \
 parent.txt
 ```
 ```json
