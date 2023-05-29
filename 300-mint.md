@@ -41,7 +41,7 @@ ord9 wallet create
 
 ## 2. Environment setup: `ord5`
 Make sure to have `bitcoind` running and `rust` installed.  
-1.1 Building `ord`
+2.1 Building `ord`
 ```
 ssh <user>@<ord5_ip>
 
@@ -51,13 +51,13 @@ git checkout inscribe-in-mempool
 cargo build --release
 ```
 
-1.2 Indexing
+2.2 Indexing
 ```
 alias ord5=./target/release/ord
 ord5 index
 ```
 
-1.3 Move (or delete) any pre-existing ord wallet. Restarting `bitcoind` is required.
+2.3 Move (or delete) any pre-existing ord wallet. Restarting `bitcoind` is required.
 ```
 mv ~/.bitcoin/wallets/ord ~/.bitcoin/wallets/ord-old
 
@@ -152,7 +152,7 @@ parent.txt
 # txhash:vout
 46b289bd46c53a2ef6bc96bea18c6ef277d8037cb5a967f00ecb74ad21ee2ca9:1
 ```
-4.5 Split the `0.045 BTC` UTXO into 300 UTXOs of `0.00014990 BTC`. Don't need to wait for the previous transaction to be mined, from step 4.4.
+4.5 Split the `0.045 BTC` UTXO into 300 UTXOs of `0.00014990 BTC`. Don't need to wait for the previous transaction to be mined, from step `4.4`.
 ```sh
 # for the destination use the address from step 4.1
 ord5 wallet split \
@@ -251,12 +251,12 @@ ord5 wallet inscribe-chain --fee-rate 1.5 --parent db3b817f1676b7b00f6ed90dea148
 ```
 4.12 Loop through steps `4.10` and `4.11` until the folder `300-inscriptions` has no more files left to be inscribed.
 
-## 4. Reveal
-4.1 Broadcast the commit transaction from step `2.3`
+## 5. Reveal
+5.1 Broadcast the commit transaction from step `3.3`
 ```
-bitcoin-cli sendrawtransaction 0100000000010190e04255f5059e62a12ba212be1e8ea3e7fcd7cf5474dc7f3ff3bd63bd41c3780000000000fdffffff029b27000000000000225120f137116e15b332bf2b65654c38875167c76b02b97449cbee6eea6785389692831b9b000000000000225120370f63d7d9540bd950f7f4c469e75bb19570173e28fb1e28b6263bff3a0ab8350140fc8067945e3476ce6477ff170d5ec37dbf50d5b13e8c62865fd58b684652da3e0a742839d9698ebf97131e462833939cfc0d5bc4f6697c159da4304b8fd9357600000000
+bitcoin-cli sendrawtransaction 0100000000010199f09cd21ae51899bc2034a55ad8a50f8cf3dc20bb0354f05641eeb1814de0c20100000000fdffffff029b2700000000000022512057045365b773be604cbabe52e21939c4527e2692cba495197327bc1fc688e3786312000000000000225120f4a9f9a1fffc0d7f11ca4f4bd371f1fd37c6a53f4d21768e03c9d156f7e9612b01402c458b78e72c3cce3ebba2941f6dd3592d1f9b29d47168665a2e0cebcea1570f6f33678cef80e1f307406b3f7dde333b700e433ecf68ab65111436328aabe65500000000
 ```
-4.2 Broadcast the reveal transaction from step `2.3`
+5.2 Broadcast the reveal transaction from step `3.3`
 ```
-bitcoin-cli sendrawtransaction 01000000000101849789e71349a162e7f39f157f28d6112d47c7d03aa0f2dc5428c6c6278793f10000000000fdffffff011027000000000000225120e02f25580deedbf208ee84f78c1e1f5a3d780520de51668233d183468e2d308d0340ec920064008a617b7de6c2825750322397f9211b5a2f0f09c75980b7323488e34aebcf8012be43634efc131f64c21adbead67476b79cf8094f31870e7d76f6954a202c7363b0319ce5ccad2fe028603ffba0373a91373eff7bb0a3f3cc842554b2d0ac0063036f7264010118746578742f706c61696e3b636861727365743d7574662d3800043939390a6821c12c7363b0319ce5ccad2fe028603ffba0373a91373eff7bb0a3f3cc842554b2d000000000
+bitcoin-cli sendrawtransaction 01000000000101acb1704320c26db79c84d7b719a846dd4484531c14e47133c002547b343ba4500000000000fdffffff01102700000000000022512053733dbbeb8decd9c9bddee252b43a6c7448f6914c3af6764749933d534fdea003404c8053708e073423854cbd07efad25b93b2cf4c2c9b7d3ef98a011d9164f3f2353c90cd9622998e5322820f64c24e8e2a17aac011d3b15da77a1e026087fbd294a20dfc54602ac25b8863da0a938ad7143adc7809556486faf850955c5f840e77417ac0063036f7264010118746578742f706c61696e3b636861727365743d7574662d3800043939390a6821c1dfc54602ac25b8863da0a938ad7143adc7809556486faf850955c5f840e7741700000000
 ```
