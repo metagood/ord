@@ -64,7 +64,7 @@ impl InscribeChain {
         commit_fee_rate: self.commit_fee_rate,
         destination: self.destination.clone(),
         file: file_path.clone(),
-        no_backup: self.no_backup,
+        no_backup: true,
         no_limit: self.no_limit,
         satpoint: Some(satpoint),
         parent: self.parent.clone(),
