@@ -117,6 +117,9 @@ bitcoind --daemon
 > Only 20 will be created on this example
 
 4.1 Create a new ord wallet (restarting `bitcoind` is required)
+**********************************
+for Dimensions mint, we will be importing the wallet holding the dimensions parent inscription
+**********************************
 ```
 ord5 wallet create
 ```
@@ -146,18 +149,18 @@ parent.txt
   "fees": 293
 }
 ```
-4.4 Transfer `300 x 0.00015 = 0.045 BTC` to this wallet.
+4.4 Transfer `300 x 0.0002 = 0.065 BTC` (includes .005 extra to be safe) to this wallet.
 ```sh
-# Using a 20 x 0.00015 = 0.003 BTC UTXO in this example
+# Using a 20 x 0.0002 = 0.0045 BTC UTXO in this example
 # txhash:vout
 46b289bd46c53a2ef6bc96bea18c6ef277d8037cb5a967f00ecb74ad21ee2ca9:1
 ```
-4.5 Split the `0.045 BTC` UTXO into 300 UTXOs of `0.00014990 BTC`. Don't need to wait for the previous transaction to be mined, from step `4.4`.
+4.5 Split the `0.065 BTC` UTXO into 300 UTXOs of `0.00020000 BTC`. Don't need to wait for the previous transaction to be mined, from step `4.4`.
 ```sh
 # for the destination use the address from step 4.1
 ord5 wallet split \
 --fee-rate 1.0 \
---amount 14990 \
+--amount 20000 \
 --destination tb1pysn0zy62526txvyvn4384psk2g6wv6f36dm7mw7vc7t996d0xkvqmcuj0r \
 46b289bd46c53a2ef6bc96bea18c6ef277d8037cb5a967f00ecb74ad21ee2ca9:1
 ```
