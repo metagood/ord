@@ -1,10 +1,11 @@
 use {super::*, std::collections::BTreeSet};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub(super) struct Flotsam {
   inscription_id: InscriptionId,
   offset: u64,
   origin: Origin,
+  tx: Option<Transaction>,
 }
 
 // change name to Jetsam or more poetic german word
@@ -97,6 +98,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
           offset: input_value + old_satpoint.offset,
           inscription_id,
           origin: Origin::Old(old_satpoint),
+          tx: None,
         });
 
         inscribed_offsets.insert(input_value + old_satpoint.offset);
@@ -139,6 +141,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
             inscription_id,
             offset: input_value,
             origin: Origin::New((0, parent)),
+            tx: Some(tx.clone()),
           });
         }
       }
@@ -170,12 +173,14 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
           inscription_id,
           offset,
           origin: Origin::New((_, parent)),
+          tx,
         } = flotsam
         {
           Flotsam {
             inscription_id,
             offset,
             origin: Origin::New((input_value - total_output_value, parent)),
+            tx,
           }
         } else {
           flotsam
@@ -315,6 +320,37 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
 
     self.satpoint_to_id.insert(&new_satpoint, &inscription_id)?;
     self.id_to_satpoint.insert(&inscription_id, &new_satpoint)?;
+
+    let inscription_id = InscriptionId::load(inscription_id);
+    let satpoint = SatPoint::load(new_satpoint);
+    let inscription_entry = self.id_to_entry.get(&inscription_id.store())?.unwrap();
+    let inscription_number = InscriptionEntry::load(inscription_entry.value()).number;
+
+    if let Some(tx) = flotsam.tx {
+      let inscription = Inscription::from_transaction(&tx).unwrap();
+      let content_type = inscription.content_type().unwrap_or("");
+      let content_len = inscription.body().map_or(0, |body| body.len());
+
+      log::info!(
+        target: "new_inscription_satpoint",
+        "{},{},{},{},{},{}",
+        self.height,
+        satpoint,
+        inscription_id,
+        inscription_number,
+        content_type,
+        content_len,
+      );
+    } else {
+      log::info!(
+        target: "new_inscription_satpoint",
+        "{},{},{},{}",
+        self.height,
+        satpoint,
+        inscription_id,
+        inscription_number,
+      );
+    }
 
     Ok(())
   }
