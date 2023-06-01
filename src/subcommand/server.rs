@@ -839,7 +839,7 @@ impl Server {
     );
     headers.insert(
       header::CONTENT_SECURITY_POLICY,
-      HeaderValue::from_static("default-src 'unsafe-eval' 'unsafe-inline' data:"),
+      HeaderValue::from_static("default-src 'self' 'unsafe-eval' 'unsafe-inline' data:"),
     );
     headers.insert(
       header::CACHE_CONTROL,
@@ -2299,7 +2299,7 @@ mod tests {
     server.assert_response_csp(
       format!("/preview/{}", InscriptionId::from(txid)),
       StatusCode::OK,
-      "default-src 'unsafe-eval' 'unsafe-inline' data:",
+      "default-src 'self' 'unsafe-eval' 'unsafe-inline' data:",
       "hello",
     );
   }
