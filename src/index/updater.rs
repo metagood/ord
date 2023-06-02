@@ -445,6 +445,7 @@ impl<'a> Updater<'a> {
       block.header.time,
       value_cache,
       self.cached_children_by_id,
+      // &index.client,
     )?;
 
     if self.index_sats {

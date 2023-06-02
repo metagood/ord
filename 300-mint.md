@@ -107,6 +107,8 @@ reveal tx hex
 ```
 3.4 Test both commit and reveal tx hex to ensure they are valid and can be decoded. The below commands should print out the JSON tx code.
 ```
+bitcoin-cli testmempoolaccept '["commit_hex", "reveal_hex"]'
+
 bitcoin-cli decoderawtransaction 0100000000010199f09cd21ae51899bc2034a55ad8a50f8cf3dc20bb0354f05641eeb1814de0c20100000000fdffffff029b2700000000000022512057045365b773be604cbabe52e21939c4527e2692cba495197327bc1fc688e3786312000000000000225120f4a9f9a1fffc0d7f11ca4f4bd371f1fd37c6a53f4d21768e03c9d156f7e9612b01402c458b78e72c3cce3ebba2941f6dd3592d1f9b29d47168665a2e0cebcea1570f6f33678cef80e1f307406b3f7dde333b700e433ecf68ab65111436328aabe65500000000
 
 bitcoin-cli decoderawtransaction 
