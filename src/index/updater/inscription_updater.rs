@@ -256,7 +256,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
             pointer: inscription.payload.pointer(),
             unbound,
           },
-          inscription_data: Some(inscription.inscription),
+          inscription_data: Some(inscription.inscription.clone()),
         });
 
         envelopes.next();
