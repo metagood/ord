@@ -255,7 +255,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
             parent: inscription.inscription.parent(),
             unbound,
           },
-          inscription_data: Some(inscription.inscription),
+          inscription_data: Some(inscription.inscription.clone()),
         });
 
         new_inscriptions.next();
