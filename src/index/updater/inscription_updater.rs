@@ -381,6 +381,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
     new_satpoint: SatPoint,
   ) -> Result {
     let inscription_id = flotsam.inscription_id.store();
+    let mut new_inscription_number: i64 = 0;
     let unbound = match flotsam.origin {
       Origin::Old { old_satpoint } => {
         self.satpoint_to_id.remove_all(&old_satpoint.store())?;
@@ -405,6 +406,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
         };
 
         self.number_to_id.insert(number, &inscription_id)?;
+        new_inscription_number = number;
 
         let sat = if unbound {
           None
@@ -458,8 +460,14 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
 
     let inscription_id = InscriptionId::load(inscription_id);
     let satpoint = SatPoint::load(satpoint);
-    let inscription_entry = self.id_to_entry.get(&inscription_id.store())?.unwrap();
-    let inscription_number = InscriptionEntry::load(inscription_entry.value()).number;
+    // let inscription_entry = self.id_to_entry.get(&inscription_id.store())?.unwrap();
+    // let inscription_number = InscriptionEntry::load(inscription_entry.value()).number;
+    let inscription_number = if new_inscription_number != 0 {
+      new_inscription_number
+    }  else {
+      let inscription_entry = self.id_to_entry.get(&inscription_id.store())?.unwrap();
+      InscriptionEntry::load(inscription_entry.value()).number
+    };
 
     if let Some(inscription) = flotsam.inscription_data {
       let is_brc_20 = Self::is_brc_20(&self, &inscription);

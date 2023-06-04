@@ -54,8 +54,8 @@ use {
     env,
     ffi::OsString,
     fmt::{self, Display, Formatter},
-    fs::{self, File},
-    io,
+    fs::{self, File, OpenOptions},
+    io::{self, Write},
     net::{TcpListener, ToSocketAddrs},
     ops::{Add, AddAssign, Sub},
     path::{Path, PathBuf},
@@ -150,7 +150,20 @@ fn unbound_outpoint() -> OutPoint {
 }
 
 pub fn main() {
-  env_logger::init();
+  let inscription_satpoint_logs_file = OpenOptions::new()
+    .write(true)
+    .append(true)
+    .create(true)
+    .open("inscription_satpoint.txt")
+    .unwrap();
+
+  env_logger::builder()
+    .filter(Some("new_inscription_satpoint"), log::LevelFilter::Info)
+    .target(env_logger::Target::Pipe(Box::new(
+      inscription_satpoint_logs_file,
+    )))
+    .format(|buf, record| writeln!(buf, "{}", record.args()))
+    .init();
 
   ctrlc::set_handler(move || {
     LISTENERS
