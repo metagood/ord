@@ -1,3 +1,4 @@
+use serde_json::Value;
 use super::*;
 
 #[derive(Debug, Clone)]
@@ -5,6 +6,8 @@ pub(super) struct Flotsam {
   inscription_id: InscriptionId,
   offset: u64,
   origin: Origin,
+  // populated if new inscription, None if transfer of existing inscription
+  inscription_data: Option<Inscription>,
 }
 
 #[derive(Debug, Clone)]
@@ -114,6 +117,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
           offset,
           inscription_id,
           origin: Origin::Old { old_satpoint },
+          inscription_data: None,
         });
 
         inscribed_offsets.insert(offset, inscription_id);
@@ -178,6 +182,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
             cursed,
             unbound,
           },
+          inscription_data: Some(inscription.inscription),
         });
 
         new_inscriptions.next();
@@ -199,6 +204,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
               cursed,
               unbound,
             },
+            inscription_data,
         } = flotsam
         {
           Flotsam {
@@ -209,6 +215,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
               cursed,
               unbound,
             },
+            inscription_data,
           }
         } else {
           flotsam
@@ -361,6 +368,66 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
     self.satpoint_to_id.insert(&satpoint, &inscription_id)?;
     self.id_to_satpoint.insert(&inscription_id, &satpoint)?;
 
+    let inscription_id = InscriptionId::load(inscription_id);
+    let satpoint = SatPoint::load(satpoint);
+    let inscription_entry = self.id_to_entry.get(&inscription_id.store())?.unwrap();
+    let inscription_number = InscriptionEntry::load(inscription_entry.value()).number;
+
+    if let Some(inscription) = flotsam.inscription_data {
+      let is_brc_20 = Self::is_brc_20(&self, &inscription);
+      let content_type = inscription.content_type().unwrap_or("");
+      let content_len = inscription.body().map_or(0, |body| body.len());
+
+      log::info!(
+        target: "new_inscription_satpoint",
+        "{},{},{},{},{},{},{}",
+        self.height,
+        satpoint,
+        inscription_id,
+        inscription_number,
+        content_type,
+        content_len,
+        is_brc_20,
+      );
+    } else {
+      log::info!(
+        target: "new_inscription_satpoint",
+        "{},{},{},{}",
+        self.height,
+        satpoint,
+        inscription_id,
+        inscription_number,
+      );
+    }
+
     Ok(())
+  }
+
+  fn valid_json(data: Option<&[u8]>) -> bool {
+    match data {
+      Some(bytes) => serde_json::from_slice::<Value>(bytes).is_ok(),
+      None => false,
+    }
+  }
+
+  fn is_brc_20(&self, inscription: &Inscription) -> bool {
+    let valid_json = Self::valid_json(inscription.body());
+    if valid_json {
+      let json_result: Result<Value, serde_json::Error> =
+        serde_json::from_slice(&inscription.body().unwrap());
+      let json: Value = json_result.unwrap();
+      let empty_json = serde_json::Map::new();
+      let json_obj = json.as_object().unwrap_or(&empty_json);
+      if json_obj.contains_key("p") {
+        let p = json_obj.get("p").unwrap();
+        if p.is_string() {
+          let p_str = p.as_str().unwrap();
+          if p_str.to_lowercase() == "brc-20" {
+            return true;
+          }
+        }
+      }
+    }
+    false
   }
 }
