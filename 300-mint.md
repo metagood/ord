@@ -29,7 +29,7 @@ bitcoind --daemon
 
 1.4 Create a new wallet to receive the 300 inscriptions **IMPORTANT**: this wallet's public key will need to be set as the taproot pub key env var in `ord-marketplace/packages/om-server/.env`
 ```
-ord wallet create
+ord wallet create | tee wallet-holding-300-inscriptions.txt
 ```
 ```json
 {
@@ -42,14 +42,14 @@ ord wallet create
 
 1.5 Set public key in `ord-marketplace/packages/om-server/.env`
 ```
-
+PROJECT_OWNER_TAPROOT_PUB_KEY=023c95cb6df3cadd29fbcdba58ffc77a493bc6d3db94ab453185fa671b5424b752
 ```
 
-## 2. Environment setup: `ord5`
+## 2. Environment setup: `ord9`
 Make sure to have `bitcoind` running and `rust` installed.  
 2.1 Building `ord`
 ```
-ssh <user>@<ord5_ip>
+ssh <user>@<ord9_ip>
 
 git clone git@github.com:metagood/ord.git
 git checkout inscribe-in-mempool
@@ -72,7 +72,7 @@ killall bitcoind
 bitcoind --daemon
 ```
 
-## 3. Creating the reveal inscription (`ord5`)
+## 3. Creating the reveal inscription (`ord9`)
 3.1 Create an ord wallet
 ```
 ord5 wallet create | tee reveal-offset-wallet.txt
@@ -91,7 +91,7 @@ ord5 wallet create | tee reveal-offset-wallet.txt
 echo "999" > reveal.txt
 ```
 ```sh
-# for the destination use the address from ord9's wallet (step 1.4)
+# for the destination use the address from ord14's wallet-holding-300-inscriptions (step 1.4)
 ord5 wallet inscribe \
 --fee-rate 100.0 \
 --destination tb1p2denmwlt3hkdnjdamm399dp6d36y3a53fsa0vaj8fxfn6560m6sq8m0glg \
