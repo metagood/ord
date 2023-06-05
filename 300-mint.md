@@ -1,21 +1,22 @@
 # 300 mint
 
-## 1. Environment setup: `ord9`
+## 1. Environment setup: `ord14`
 Make sure to have `bitcoind` running and `rust` installed.  
 1.1 Building `ord`
 ```
-ssh <user>@<ord9_ip>
+ssh <user>@<ord14_ip>
 
 git clone git@github.com:metagood/ord.git
-git checkout ord-pc-logfile-052
+git checkout ord-logfile-060
 
 cargo build --release
 ```
 
-1.2 Indexing
+1.2 Copy binary to ~/bin/ and start indexing (or download full index and log file from S3 bucket if exists)
 ```
-alias ord9=./target/release/ord
-ord9 index
+cp -a ~/ord/target/release/ord ~/bin/
+cd ~/bin/
+ord index
 ```
 
 1.3 Move (or delete) any pre-existing ord wallet. Restarting `bitcoind` is required.
@@ -26,9 +27,9 @@ killall bitcoind
 bitcoind --daemon
 ```
 
-1.4 Create a new wallet to receive the 300 inscriptions
+1.4 Create a new wallet to receive the 300 inscriptions **IMPORTANT**: this wallet's public key will need to be set as the taproot pub key env var in `ord-marketplace/packages/om-server/.env`
 ```
-ord9 wallet create
+ord wallet create
 ```
 ```json
 {
@@ -37,6 +38,11 @@ ord9 wallet create
   "public_key": "023c95cb6df3cadd29fbcdba58ffc77a493bc6d3db94ab453185fa671b5424b752",
   "passphrase": ""
 }
+```
+
+1.5 Set public key in `ord-marketplace/packages/om-server/.env`
+```
+
 ```
 
 ## 2. Environment setup: `ord5`
@@ -51,10 +57,11 @@ git checkout inscribe-in-mempool
 cargo build --release
 ```
 
-2.2 Indexing
+2.2 Copy binary to ~/bin/ and start indexing (or download full index and log file from S3 bucket if exists)
 ```
-alias ord5=./target/release/ord
-ord5 index
+cp -a ~/ord/target/release/ord ~/bin/
+cd ~/bin/
+ord index
 ```
 
 2.3 Move (or delete) any pre-existing ord wallet. Restarting `bitcoind` is required.
@@ -65,10 +72,10 @@ killall bitcoind
 bitcoind --daemon
 ```
 
-## 3. Creating the reveal inscription
+## 3. Creating the reveal inscription (`ord5`)
 3.1 Create an ord wallet
 ```
-ord5 wallet create
+ord5 wallet create | tee reveal-offset-wallet.txt
 ```
 ```json
 {
@@ -78,7 +85,7 @@ ord5 wallet create
   "passphrase": ""
 }
 ```
-3.2 Fund it with just enough for one inscription (`0.00015 BTC`).  
+3.2 Fund it with just enough for one inscription and high fee rate (`0.005 BTC`).  
 3.3 Create the reveal txt file and inscribe it using `--dry-run` to not broadcast it.
 ```
 echo "999" > reveal.txt
@@ -86,10 +93,10 @@ echo "999" > reveal.txt
 ```sh
 # for the destination use the address from ord9's wallet (step 1.4)
 ord5 wallet inscribe \
---fee-rate 1.0 \
+--fee-rate 100.0 \
 --destination tb1p2denmwlt3hkdnjdamm399dp6d36y3a53fsa0vaj8fxfn6560m6sq8m0glg \
 --dry-run \
-reveal.txt
+reveal.txt | tee offset-tx-hex
 ```
 ```
 {
@@ -109,10 +116,9 @@ reveal tx hex
 ```
 bitcoin-cli testmempoolaccept '["commit_hex", "reveal_hex"]'
 
-bitcoin-cli decoderawtransaction 0100000000010199f09cd21ae51899bc2034a55ad8a50f8cf3dc20bb0354f05641eeb1814de0c20100000000fdffffff029b2700000000000022512057045365b773be604cbabe52e21939c4527e2692cba495197327bc1fc688e3786312000000000000225120f4a9f9a1fffc0d7f11ca4f4bd371f1fd37c6a53f4d21768e03c9d156f7e9612b01402c458b78e72c3cce3ebba2941f6dd3592d1f9b29d47168665a2e0cebcea1570f6f33678cef80e1f307406b3f7dde333b700e433ecf68ab65111436328aabe65500000000
+bitcoin-cli decoderawtransaction <commit_hex>
 
-bitcoin-cli decoderawtransaction 
-01000000000101acb1704320c26db79c84d7b719a846dd4484531c14e47133c002547b343ba4500000000000fdffffff01102700000000000022512053733dbbeb8decd9c9bddee252b43a6c7448f6914c3af6764749933d534fdea003404c8053708e073423854cbd07efad25b93b2cf4c2c9b7d3ef98a011d9164f3f2353c90cd9622998e5322820f64c24e8e2a17aac011d3b15da77a1e026087fbd294a20dfc54602ac25b8863da0a938ad7143adc7809556486faf850955c5f840e77417ac0063036f7264010118746578742f706c61696e3b636861727365743d7574662d3800043939390a6821c1dfc54602ac25b8863da0a938ad7143adc7809556486faf850955c5f840e7741700000000
+bitcoin-cli decoderawtransaction <reveal_hex>
 ```
 3.5 Put this wallet on hold until it is needed again. Restarting `bitcoind` is required.
 ```
@@ -126,11 +132,8 @@ bitcoind --daemon
 > Only 20 will be created on this example
 
 4.1 Create a new ord wallet (restarting `bitcoind` is required)
-**********************************
-for Dimensions mint, we will be importing the wallet holding the dimensions parent inscription
-**********************************
 ```
-ord5 wallet create
+ord5 wallet create | tee wallet-holding-parent-dimensions.txt
 ```
 ```json
 {
@@ -140,27 +143,16 @@ ord5 wallet create
   "passphrase": ""
 }
 ```
-4.2 Fund it with enough for the parent inscription (vary according to file size).  
-4.3 Get the file to be inscribed as the parent and inscribe it.
+4.2 Danny login to machine with wallet holding parent dimensions inscription
+4.3 Danny send parent inscription to wallet created in 4.1
 ```sh
 # for the destination use the address from step 4.1
-ord5 wallet inscribe \
---fee-rate 1.0 \
---destination tb1pysn0zy62526txvyvn4384psk2g6wv6f36dm7mw7vc7t996d0xkvqmcuj0r \
-parent.txt
+ord wallet send --fee-rate 100.0 tb1pysn0zy62526txvyvn4384psk2g6wv6f36dm7mw7vc7t996d0xkvqmcuj0r 2dbdf9ebbec6be793fd16ae9b797c7cf968ab2427166aaf390b90b71778266abi0
 ```
-```json
-{
-  "commit": "5aff9fd0503346dc98e8f861e3fde6802faf567e8ca06c89a99bfb482a132278",
-  "inscription": "db3b817f1676b7b00f6ed90dea14821b60ffc4f995af156b8b2c0f8ed5bdb829i0",
-  "parent": null,
-  "reveal": "db3b817f1676b7b00f6ed90dea14821b60ffc4f995af156b8b2c0f8ed5bdb829",
-  "fees": 293
-}
-```
-4.4 Transfer `300 x 0.0002 = 0.065 BTC` (includes .005 extra to be safe) to this wallet.
+4.4 Transfer `300 x 0.0002 = 0.065 BTC` (includes .005 extra to be safe) to the wallet created in 4.1, then find the outpoint to this utxo.
 ```sh
-# Using a 20 x 0.0002 = 0.0045 BTC UTXO in this example
+ord5 wallet outputs
+
 # txhash:vout
 46b289bd46c53a2ef6bc96bea18c6ef277d8037cb5a967f00ecb74ad21ee2ca9:1
 ```
@@ -168,7 +160,7 @@ parent.txt
 ```sh
 # for the destination use the address from step 4.1
 ord5 wallet split \
---fee-rate 1.0 \
+--fee-rate 100.0 \
 --amount 20000 \
 --destination tb1pysn0zy62526txvyvn4384psk2g6wv6f36dm7mw7vc7t996d0xkvqmcuj0r \
 46b289bd46c53a2ef6bc96bea18c6ef277d8037cb5a967f00ecb74ad21ee2ca9:1
@@ -178,7 +170,7 @@ ord5 wallet split \
 # for this example this file was updated to produce only 20 files
 bash create-300.sh
 ```
-4.7 Transfer the important UTXO to this wallet.
+4.7 Danny transfer the important UTXO to this wallet.
 ```sh
 # txhash:vout
 c1c9dbf3b86ea75a5a4fa80cf7aef14c2840bc92c254f11188e656198f35f892:0
