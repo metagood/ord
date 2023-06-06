@@ -45,11 +45,11 @@ ord wallet create | tee wallet-holding-300-inscriptions.txt
 PROJECT_OWNER_TAPROOT_PUB_KEY=023c95cb6df3cadd29fbcdba58ffc77a493bc6d3db94ab453185fa671b5424b752
 ```
 
-## 2. Environment setup: `ord9`
+## 2. Environment setup: `ord12`
 Make sure to have `bitcoind` running and `rust` installed.  
 2.1 Building `ord`
 ```
-ssh <user>@<ord9_ip>
+ssh <user>@<ord12_ip>
 
 git clone git@github.com:metagood/ord.git
 git checkout inscribe-in-mempool
@@ -72,10 +72,10 @@ killall bitcoind
 bitcoind --daemon
 ```
 
-## 3. Creating the reveal inscription (`ord9`)
+## 3. Creating the reveal inscription (`ord12`)
 3.1 Create an ord wallet
 ```
-ord5 wallet create | tee reveal-offset-wallet.txt
+ord12 wallet create | tee reveal-offset-wallet.txt
 ```
 ```json
 {
@@ -92,7 +92,7 @@ echo "999" > reveal.txt
 ```
 ```sh
 # for the destination use the address from ord14's wallet-holding-300-inscriptions (step 1.4)
-ord5 wallet inscribe \
+ord12 wallet inscribe \
 --fee-rate 100.0 \
 --destination tb1p2denmwlt3hkdnjdamm399dp6d36y3a53fsa0vaj8fxfn6560m6sq8m0glg \
 --dry-run \
@@ -127,13 +127,13 @@ mv ~/.bitcoin/wallets/ord ~/.bitcoin/wallets/ord-reveal-inscription
 killall bitcoind
 bitcoind --daemon
 ```
-## 4. Creating the 300 inscriptions
+## 4. Creating the 300 inscriptions (ord12)
 > **Note**  
 > Only 20 will be created on this example
 
 4.1 Create a new ord wallet (restarting `bitcoind` is required)
 ```
-ord5 wallet create | tee wallet-holding-parent-dimensions.txt
+ord12 wallet create | tee wallet-holding-parent-dimensions.txt
 ```
 ```json
 {
@@ -151,7 +151,7 @@ ord wallet send --fee-rate 100.0 tb1pysn0zy62526txvyvn4384psk2g6wv6f36dm7mw7vc7t
 ```
 4.4 Transfer `300 x 0.0002 = 0.065 BTC` (includes .005 extra to be safe) to the wallet created in 4.1, then find the outpoint to this utxo.
 ```sh
-ord5 wallet outputs
+ord12 wallet outputs
 
 # txhash:vout
 46b289bd46c53a2ef6bc96bea18c6ef277d8037cb5a967f00ecb74ad21ee2ca9:1
@@ -159,7 +159,7 @@ ord5 wallet outputs
 4.5 Split the `0.065 BTC` UTXO into 300 UTXOs of `0.00020000 BTC`. Don't need to wait for the previous transaction to be mined, from step `4.4`.
 ```sh
 # for the destination use the address from step 4.1
-ord5 wallet split \
+ord12 wallet split \
 --fee-rate 100.0 \
 --amount 20000 \
 --destination tb1pysn0zy62526txvyvn4384psk2g6wv6f36dm7mw7vc7t996d0xkvqmcuj0r \
@@ -191,13 +191,13 @@ Important to note
 * Wait for all the transactions to be mined before running this step.
 * `--fee-rate` is set to `1.5` instead of `1.0` to avoid the possibility of getting "min relay fee not met" error in the middle of the transactions chain
 * `--parent` is the inscription id inscribed on step `4.3`
-* `--destination` must be the address given when the ord9 wallet was created on step `4.1`
+* `--destination` must be the address given when the ord12 wallet was created on step `4.1`
 * `--satpoint` has to point to the last important sat position, `c1c9...f892:0:7519`, because this command will consume the important sats in a bottom-up direction
 * Upon completion, the `inscribe-chain` command will give the next command to be run. It's highly important to wait for the current transaction chain to be mined before running this new command, otherwise the next chain will be broken in the middle with the error "transaction chain size limit exceeded"
 ```sh
-# for the destination use the address from ord9's wallet (step 1.4)
+# for the destination use the address from ord12's wallet (step 1.4)
 # it's important to use exactly the one from step 1.4, because we have the public key for that address.
-ord5 wallet inscribe-chain \
+ord12 wallet inscribe-chain \
 --fee-rate 1.5 \
 --parent db3b817f1676b7b00f6ed90dea14821b60ffc4f995af156b8b2c0f8ed5bdb829i0 \
 --destination tb1p2denmwlt3hkdnjdamm399dp6d36y3a53fsa0vaj8fxfn6560m6sq8m0glg \
@@ -251,7 +251,7 @@ ord wallet inscribe-chain --fee-rate 1.5 --parent db3b817f1676b7b00f6ed90dea1482
 4.10 Wait for the previous transaction chain to be mined  
 4.11 Run the next `inscribe-chain` command
 ```
-ord5 wallet inscribe-chain --fee-rate 1.5 --parent db3b817f1676b7b00f6ed90dea14821b60ffc4f995af156b8b2c0f8ed5bdb829i0 --destination tb1p2denmwlt3hkdnjdamm399dp6d36y3a53fsa0vaj8fxfn6560m6sq8m0glg --satpoint 0ba61faa20a556f6e22a23b3c43a002395049133ce2586bbc9a06ad9fc7221ff:0:7509 300-inscriptions/
+ord12 wallet inscribe-chain --fee-rate 1.5 --parent db3b817f1676b7b00f6ed90dea14821b60ffc4f995af156b8b2c0f8ed5bdb829i0 --destination tb1p2denmwlt3hkdnjdamm399dp6d36y3a53fsa0vaj8fxfn6560m6sq8m0glg --satpoint 0ba61faa20a556f6e22a23b3c43a002395049133ce2586bbc9a06ad9fc7221ff:0:7509 300-inscriptions/
 ```
 4.12 Loop through steps `4.10` and `4.11` until the folder `300-inscriptions` has no more files left to be inscribed.
 
