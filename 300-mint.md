@@ -202,7 +202,7 @@ ord12 wallet inscribe-chain \
 --parent db3b817f1676b7b00f6ed90dea14821b60ffc4f995af156b8b2c0f8ed5bdb829i0 \
 --destination tb1p2denmwlt3hkdnjdamm399dp6d36y3a53fsa0vaj8fxfn6560m6sq8m0glg \
 --satpoint c1c9dbf3b86ea75a5a4fa80cf7aef14c2840bc92c254f11188e656198f35f892:0:7519 \
-300-inscriptions/
+300-inscriptions/ | tee inscribe-chain/inscribe-chain-{num}.txt
 ```
 ```
 Inscribing 300-inscriptions/1.json at c1c9dbf3b86ea75a5a4fa80cf7aef14c2840bc92c254f11188e656198f35f892:0:7519
