@@ -92,7 +92,7 @@ echo "999" > reveal.txt
 ```
 ```sh
 # for the destination use the address from ord14's wallet-holding-300-inscriptions (step 1.4)
-ord12 wallet inscribe \
+ord9 wallet inscribe \
 --fee-rate 100.0 \
 --destination tb1p2denmwlt3hkdnjdamm399dp6d36y3a53fsa0vaj8fxfn6560m6sq8m0glg \
 --dry-run \
