@@ -6,7 +6,7 @@
 ## Requirements
 1. utxo containing special sats must be padded with at least 1,000 normal sats at the beginning
 2. if the utxo has more than one range of special sats, start with the last sat of the last range, because everything below that will be trimmed.
-3. for each iteration, 10 inscriptions being created in one block, wallet must have 10 additional available utxos with enough sats for each inscriptions because 1 sat will come from the special utxo and the other 9,999 will come from any other normal utxo available in the wallet.
+3. for each iteration, 10 inscriptions being created in one block, wallet must have 10 additional available utxos with enough sats for each inscription because 1 sat will come from the special utxo and the other 9,999 will come from any other normal utxo available in the wallet. **Important**: each of these prepared utxo's also needs to be large enough to pay the chosen fee rate for the inscription.
 4. files to be inscribed must be named as `<number>.<extension>`, the inscribing will take place in that order.
 
 ## Example
