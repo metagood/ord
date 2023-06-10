@@ -2206,7 +2206,7 @@ mod tests {
     server.assert_response_csp(
       format!("/preview/{}", InscriptionId::from(txid)),
       StatusCode::OK,
-      "default-src 'unsafe-eval' 'unsafe-inline' data:; connect-src 'self';",
+      "default-src 'self' 'unsafe-eval' 'unsafe-inline' data:",
       "hello",
     );
   }
