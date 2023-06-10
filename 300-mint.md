@@ -149,19 +149,19 @@ ord12 wallet create | tee wallet-holding-parent-dimensions.txt
 # for the destination use the address from step 4.1
 ord wallet send --fee-rate 100.0 tb1pysn0zy62526txvyvn4384psk2g6wv6f36dm7mw7vc7t996d0xkvqmcuj0r 2dbdf9ebbec6be793fd16ae9b797c7cf968ab2427166aaf390b90b71778266abi0
 ```
-4.4 Transfer `300 x 0.0002 = 0.065 BTC` (includes .005 extra to be safe) to the wallet created in 4.1, then find the outpoint to this utxo.
+4.4 Transfer `300 x 0.001 = 0.315 BTC` (includes .005 extra to be safe) to the wallet created in 4.1, then find the outpoint to this utxo.
 ```sh
 ord12 wallet outputs
 
 # txhash:vout
 46b289bd46c53a2ef6bc96bea18c6ef277d8037cb5a967f00ecb74ad21ee2ca9:1
 ```
-4.5 Split the `0.065 BTC` UTXO into 300 UTXOs of `0.00020000 BTC`. Don't need to wait for the previous transaction to be mined, from step `4.4`.
+4.5 Split the `0.315 BTC` UTXO into 300 UTXOs of `0.00100000 BTC`. Don't need to wait for the previous transaction to be mined, from step `4.4`.
 ```sh
 # for the destination use the address from step 4.1
 ord12 wallet split \
 --fee-rate 100.0 \
---amount 20000 \
+--amount 100000 \
 --destination tb1pysn0zy62526txvyvn4384psk2g6wv6f36dm7mw7vc7t996d0xkvqmcuj0r \
 46b289bd46c53a2ef6bc96bea18c6ef277d8037cb5a967f00ecb74ad21ee2ca9:1
 ```
