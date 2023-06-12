@@ -335,20 +335,20 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
       let is_brc_20 = Self::is_brc_20(&self, &inscription);
 
       // if !Self::is_brc_20(&self, &inscription) {
-        let content_type = inscription.content_type().unwrap_or("");
-        let content_len = inscription.body().map_or(0, |body| body.len());
+      let content_type = inscription.content_type().unwrap_or("");
+      let content_len = inscription.body().map_or(0, |body| body.len());
 
-        log::info!(
-          target: "new_inscription_satpoint",
-          "{},{},{},{},{},{},{}",
-          self.height,
-          satpoint,
-          inscription_id,
-          inscription_number,
-          content_type,
-          content_len,
-          is_brc_20,
-        );
+      log::info!(
+        target: "new_inscription_satpoint",
+        "{},{},{},{},{},{},{}",
+        self.height,
+        satpoint,
+        inscription_id,
+        inscription_number,
+        content_type,
+        content_len,
+        is_brc_20,
+      );
       // }
     } else {
       // let inscription = self
@@ -356,14 +356,14 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
       //   .and_then(|tx| Inscription::from_transaction(&tx)).unwrap();
 
       // if !Self::is_brc_20(&self, &inscription) {
-        log::info!(
-          target: "new_inscription_satpoint",
-          "{},{},{},{}",
-          self.height,
-          satpoint,
-          inscription_id,
-          inscription_number,
-        );
+      log::info!(
+        target: "new_inscription_satpoint",
+        "{},{},{},{}",
+        self.height,
+        satpoint,
+        inscription_id,
+        inscription_number,
+      );
       // }
     }
 

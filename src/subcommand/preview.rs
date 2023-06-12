@@ -87,6 +87,8 @@ impl Preview {
             no_limit: false,
             destination: None,
             parent: None,
+            commit: None,
+            keypair: None,
           },
         )),
       }
