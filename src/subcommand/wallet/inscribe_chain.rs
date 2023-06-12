@@ -68,6 +68,8 @@ impl InscribeChain {
         no_limit: self.no_limit,
         satpoint: Some(satpoint),
         parent: self.parent.clone(),
+        commit: None,
+        keypair: None,
       };
 
       println!("Inscribing {} at {}", file_path.clone().display(), satpoint);
