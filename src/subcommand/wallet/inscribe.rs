@@ -230,7 +230,9 @@ impl Inscribe {
 
     txns_to_broadcast.push(&reveal_to_broadcast);
 
-    let test_mempool_accept = client.test_mempool_accept(txns_to_broadcast.as_slice())?;
+    let test_mempool_accept = client
+      .test_mempool_accept(txns_to_broadcast.as_slice())
+      .expect("Failed to test mempool accept");
     let is_mempool_accepted = test_mempool_accept
       .clone()
       .into_iter()
