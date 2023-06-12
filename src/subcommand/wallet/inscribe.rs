@@ -1,4 +1,9 @@
-use bitcoin::SchnorrSig;
+use std::process::exit;
+
+use bitcoin::{
+  util::amount::serde::{as_btc::opt::serialize, as_sat::serialize},
+  SchnorrSig,
+};
 use bitcoincore_rpc::RawTx;
 
 use {
@@ -198,31 +203,46 @@ impl Inscribe {
       Inscribe::backup_recovery_key(&client, recovery_key_pair, options.chain().network())?;
     }
 
-    let commit = if let Some(commit) = self.commit {
-      commit.txid
-    } else {
-      let signed_raw_commit_tx = client
+    let commit_to_broadcast: Option<&Vec<u8>>;
+    let reveal_to_broadcast: Option<&Vec<u8>>;
+    let commit: Txid;
+    let reveal_txid: Txid;
+
+    if self.commit.is_none() {
+      let signed_commit = client
         .sign_raw_transaction_with_wallet(&unsigned_commit_tx, None, None)?
         .hex;
 
-      client
-        .send_raw_transaction(&signed_raw_commit_tx)
-        .context("Failed to send commit transaction")?
-    };
+      commit_to_broadcast = Some(&signed_commit);
+    } else {
+      commit = self.commit.unwrap().txid;
+    }
 
-    let reveal = if self.parent.is_some() {
+    if self.parent.is_some() {
       let fully_signed_raw_reveal_tx = client
         .sign_raw_transaction_with_wallet(&partially_signed_reveal_tx, None, None)?
         .hex;
 
-      client
-        .send_raw_transaction(&fully_signed_raw_reveal_tx)
-        .context("Failed to send reveal transaction")?
+      reveal_to_broadcast = Some(&fully_signed_raw_reveal_tx);
     } else {
-      client
-        .send_raw_transaction(&partially_signed_reveal_tx)
-        .context("Failed to send reveal transaction")?
-    };
+      let signed_reveal = hex::decode(partially_signed_reveal_tx.raw_hex())?;
+      reveal_to_broadcast = Some(&signed_reveal);
+    }
+
+    let txns_to_broadcast: Vec<&Vec<u8>>;
+
+    if let Some(commit) = commit_to_broadcast {
+      txns_to_broadcast.push(commit);
+    }
+    if let Some(reveal) = reveal_to_broadcast {
+      txns_to_broadcast.push(reveal);
+    }
+
+    let test_mempool_accept = client.test_mempool_accept(txns_to_broadcast.as_slice())?;
+
+    print_json(test_mempool_accept)?;
+
+    //exit(1);
 
     let inscription = InscriptionId {
       txid: reveal,
