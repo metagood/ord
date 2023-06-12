@@ -1,9 +1,4 @@
-use std::process::exit;
-
-use bitcoin::{
-  util::amount::serde::{as_btc::opt::serialize, as_sat::serialize},
-  SchnorrSig,
-};
+use bitcoin::SchnorrSig;
 use bitcoincore_rpc::RawTx;
 
 use {
@@ -203,19 +198,17 @@ impl Inscribe {
       Inscribe::backup_recovery_key(&client, recovery_key_pair, options.chain().network())?;
     }
 
-    let commit_to_broadcast: Option<&Vec<u8>>;
-    let reveal_to_broadcast: Option<&Vec<u8>>;
+    let mut commit_to_broadcast: Option<Vec<u8>> = None;
+    let reveal_to_broadcast: Vec<u8>;
     let commit: Txid;
-    let reveal_txid: Txid;
+    let reveal: Txid;
 
     if self.commit.is_none() {
       let signed_commit = client
         .sign_raw_transaction_with_wallet(&unsigned_commit_tx, None, None)?
         .hex;
 
-      commit_to_broadcast = Some(&signed_commit);
-    } else {
-      commit = self.commit.unwrap().txid;
+      commit_to_broadcast = Some(signed_commit);
     }
 
     if self.parent.is_some() {
@@ -223,26 +216,43 @@ impl Inscribe {
         .sign_raw_transaction_with_wallet(&partially_signed_reveal_tx, None, None)?
         .hex;
 
-      reveal_to_broadcast = Some(&fully_signed_raw_reveal_tx);
+      reveal_to_broadcast = fully_signed_raw_reveal_tx;
     } else {
       let signed_reveal = hex::decode(partially_signed_reveal_tx.raw_hex())?;
-      reveal_to_broadcast = Some(&signed_reveal);
+      reveal_to_broadcast = signed_reveal;
     }
 
-    let txns_to_broadcast: Vec<&Vec<u8>>;
+    let mut txns_to_broadcast: Vec<&Vec<u8>> = Vec::new();
 
-    if let Some(commit) = commit_to_broadcast {
+    if let Some(commit) = &commit_to_broadcast {
       txns_to_broadcast.push(commit);
     }
-    if let Some(reveal) = reveal_to_broadcast {
-      txns_to_broadcast.push(reveal);
-    }
+
+    txns_to_broadcast.push(&reveal_to_broadcast);
 
     let test_mempool_accept = client.test_mempool_accept(txns_to_broadcast.as_slice())?;
+    let is_mempool_accepted = test_mempool_accept
+      .clone()
+      .into_iter()
+      .map(|x| x.allowed)
+      .fold(true, |acc, item| acc && item);
 
-    print_json(test_mempool_accept)?;
+    if !is_mempool_accepted {
+      print_json(test_mempool_accept)?;
+      bail!("testmempoolaccept failed!");
+    }
 
-    //exit(1);
+    commit = if let Some(commit) = commit_to_broadcast {
+      client
+        .send_raw_transaction(&commit)
+        .context("Failed to send commit transaction")?
+    } else {
+      self.commit.unwrap().txid
+    };
+
+    reveal = client
+      .send_raw_transaction(&reveal_to_broadcast)
+      .context("Failed to send reveal transaction")?;
 
     let inscription = InscriptionId {
       txid: reveal,
