@@ -195,7 +195,7 @@ impl Inscribe {
     }
 
     if !self.no_backup {
-      Inscribe::backup_recovery_key(&client, recovery_key_pair, options.chain().network())?;
+      //Inscribe::backup_recovery_key(&client, recovery_key_pair, options.chain().network())?;
     }
 
     let commit = if let Some(commit) = self.commit {
