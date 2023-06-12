@@ -162,8 +162,12 @@ impl Inscribe {
       ),
     );
 
-    let fees = Self::calculate_fee(&unsigned_commit_tx, &utxos)
-      + Self::calculate_fee(&partially_signed_reveal_tx, &utxos);
+    let fees = if self.commit.is_some() {
+      Self::calculate_fee(&partially_signed_reveal_tx, &utxos)
+    } else {
+      Self::calculate_fee(&unsigned_commit_tx, &utxos)
+        + Self::calculate_fee(&partially_signed_reveal_tx, &utxos)
+    };
 
     if self.dry_run {
       print_json(Output {
