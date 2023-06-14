@@ -39,7 +39,6 @@ impl Create {
     };
 
     let derivation_path = &DerivationPath::from_str(format!("m/86'/{}'/0'", coin_type).as_str())?;
-
     let xprv = root.derive_priv(&secp, derivation_path)?;
     let xpub = ExtendedPubKey::from_priv(&secp, &xprv);
     let public_key = xpub
