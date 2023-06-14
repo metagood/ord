@@ -33,7 +33,13 @@ impl Create {
     let secp = Secp256k1::new();
     let root = bip32::ExtendedPrivKey::new_master(options.chain().network(), &seed)?;
 
-    let xprv = root.derive_priv(&secp, &DerivationPath::from_str("m/86'/1'/0'")?)?;
+    let coin_type = match options.chain().network() {
+      Network::Bitcoin => 0,
+      _ => 1,
+    };
+
+    let derivation_path = &DerivationPath::from_str(format!("m/86'/{}'/0'", coin_type).as_str())?;
+    let xprv = root.derive_priv(&secp, derivation_path)?;
     let xpub = ExtendedPubKey::from_priv(&secp, &xprv);
     let public_key = xpub
       .derive_pub(&secp, &DerivationPath::from_str("m/0/0")?)?
