@@ -301,6 +301,7 @@ impl Inscribe {
         .ok_or_else(|| anyhow!("wallet contains no cardinal utxos"))?
     };
 
+    /*
     for (inscribed_satpoint, inscription_id) in &inscriptions {
       if inscribed_satpoint == &satpoint {
         return Err(anyhow!("sat at {} already inscribed", satpoint));
@@ -313,6 +314,7 @@ impl Inscribe {
         ));
       }
     }
+    */
 
     let secp256k1 = Secp256k1::new();
 
