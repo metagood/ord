@@ -22,8 +22,6 @@ pub(crate) struct InscribeChainDestinationAddresses {
     help = "Do not check that transactions are equal to or below the MAX_STANDARD_TX_WEIGHT of 400,000 weight units. Transactions over this limit are currently nonstandard and will not be relayed by bitcoind in its default configuration. Do not use this flag unless you understand the implications."
   )]
   pub(crate) no_limit: bool,
-  // #[clap(long, help = "Send inscription to <DESTINATION>.")]
-  // pub(crate) destination: Option<Address>,
   #[clap(long, help = "Establish parent relationship with <PARENT>.")]
   pub(crate) parent: Option<InscriptionId>,
 }
@@ -42,10 +40,6 @@ impl InscribeChainDestinationAddresses {
       .unwrap()
       .map(|f| f.unwrap())
       .filter(|file| file.path().is_file())
-      // .unwrap()
-      // .filter_map(|entry| {
-      //   entry.ok().and_then(|e| e.path().file_name().map(|f| f.to_string_lossy().to_string()))
-      // })
       .collect();
     inscriptions_files.sort_by(|a, b| get_number_from_dir_entry(a).cmp(&get_number_from_dir_entry(b)));
 
@@ -57,20 +51,12 @@ impl InscribeChainDestinationAddresses {
     addresses_files.sort_by(|a, b| get_number_from_dir_entry(a).cmp(&get_number_from_dir_entry(b)));
 
     if inscriptions_files.len() != addresses_files.len() {
-      // panic!("The number of files in 'inscriptions' and 'addresses' subdirectories is not the same.");
       return Err(anyhow!(
         "The number of files in 'inscriptions' and 'addresses' subdirectories is not the same: inscriptions/ has {} files and addresses/ has {} files",
         inscriptions_files.len(),
         addresses_files.len()
       ));
     }
-    
-    // let dir = self.dir.read_dir()?;
-    // let mut files: Vec<DirEntry> = dir
-    //   .map(|f| f.unwrap())
-    //   .filter(|file| file.path().is_file())
-    //   .collect();
-    // files.sort_by(|a, b| get_number_from_dir_entry(a).cmp(&get_number_from_dir_entry(b)));
 
     if inscriptions_files.len() as u64 > satpoint.offset + 1 {
       return Err(anyhow!(
@@ -160,15 +146,12 @@ impl InscribeChainDestinationAddresses {
 
   fn get_resume_cli_command(&self, updated_satpoint: SatPoint) -> String {
     let mut cli = format!(
-      "ord wallet inscribe-chain --fee-rate {}",
+      "ord wallet inscribe-chain-destination-addresses --fee-rate {}",
       self.fee_rate.fee(10 as usize).to_sat() as f64 / 10.0
     );
     if let Some(parent) = self.parent {
       cli.push_str(&format!(" --parent {}", parent));
     }
-    // if let Some(destination) = &self.destination {
-    //   cli.push_str(&format!(" --destination {}", destination));
-    // }
     cli.push_str(&format!(" --satpoint {}", updated_satpoint));
     cli.push_str(&format!(" {}", self.dir.display()));
 
@@ -176,16 +159,11 @@ impl InscribeChainDestinationAddresses {
   }
 
   fn validate_btc_address(&self, network: bitcoin::network::constants::Network, address_str: &str) -> bool {
-    // let network = Network::Bitcoin;
-    // let address = Address::from_str(address)?;
     match Address::from_str(address_str) {
       Ok(address) => {
         if address.network == network {
           return true;
         }
-        // } else {
-        //   panic!("Invalid btc address: {}", address_str);
-        // }
       }
       Err(err) => {
         panic!("Invalid btc address {}: {}", address_str, err);
