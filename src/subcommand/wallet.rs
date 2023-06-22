@@ -19,6 +19,7 @@ pub mod cardinals;
 pub mod create;
 pub(crate) mod inscribe;
 pub mod inscribe_chain;
+pub mod inscribe_chain_destination_addresses;
 pub mod inscriptions;
 pub mod outputs;
 pub mod receive;
@@ -56,6 +57,8 @@ pub(crate) enum Wallet {
   #[clap(about = "...")]
   InscribeChain(inscribe_chain::InscribeChain),
   #[clap(about = "...")]
+  InscribeChainDestinationAddresses(inscribe_chain_destination_addresses::InscribeChainDestinationAddresses),
+  #[clap(about = "...")]
   Split(split::Split),
 }
 
@@ -66,6 +69,7 @@ impl Wallet {
       Self::Create(create) => create.run(options),
       Self::Inscribe(inscribe) => inscribe.run(options).map(|_| Ok(()))?,
       Self::InscribeChain(inscribe_chain) => inscribe_chain.run(options),
+      Self::InscribeChainDestinationAddresses(inscribe_chain_destination_addresses) => inscribe_chain_destination_addresses.run(options),
       Self::Inscriptions => inscriptions::run(options),
       Self::Receive => receive::run(options),
       Self::Restore(restore) => restore.run(options),
