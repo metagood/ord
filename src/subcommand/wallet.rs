@@ -54,11 +54,11 @@ pub(crate) enum Wallet {
   Outputs,
   #[clap(about = "List unspent cardinal outputs in wallet")]
   Cardinals,
-  #[clap(about = "...")]
+  #[clap(about = "Inscribe a directory of files on specific sats, 12 at a time using CPFP. Takes as an argument, a path to a directory of files to be inscribed.")]
   InscribeChain(inscribe_chain::InscribeChain),
-  #[clap(about = "...")]
+  #[clap(about = "Inscribe a directory of files on specific sats, sent to specific destination addresses, 12 at a time using CPFP. Takes as an argument, a path to a directory containing 'addresses/' and 'inscriptions/' subdirs.")]
   InscribeChainDestinationAddresses(inscribe_chain_destination_addresses::InscribeChainDestinationAddresses),
-  #[clap(about = "...")]
+  #[clap(about = "Split a utxo into multiple utxo's of smaller, equal denominations.")]
   Split(split::Split),
 }
 

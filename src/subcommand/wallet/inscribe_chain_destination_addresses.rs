@@ -34,7 +34,18 @@ impl InscribeChainDestinationAddresses {
     let mut satpoint = self.satpoint;
 
     let inscriptions_path = self.dir.join("inscriptions");
+
+    if !Path::new(&inscriptions_path).exists() {
+      eprintln!("Error: inscriptions/ directory does not exist");
+      return Ok(());
+    }
+
     let addresses_path = self.dir.join("addresses");
+
+    if !Path::new(&addresses_path).exists() {
+      eprintln!("Error: addresses/ directory does not exist");
+      return Ok(());
+    }
 
     let mut inscriptions_files: Vec<DirEntry> = fs::read_dir(inscriptions_path)
       .unwrap()
@@ -69,14 +80,6 @@ impl InscribeChainDestinationAddresses {
     DirBuilder::new()
       .create(&self.dir.join("inscribed"))
       .unwrap_or_default();
-
-    // validate all addresses before inscribing anything
-    for i in 0..(addresses_files.len().min(INSCRIPTION_PER_BLOCK)) {
-      let destination_address_file_path = addresses_files.get(i).unwrap().path();
-      let destination_address_str = fs::read_to_string(destination_address_file_path.clone())?;
-      self.validate_btc_address(options.chain().network(), destination_address_str.as_str());
-    }
-
 
     for i in 0..(inscriptions_files.len().min(INSCRIPTION_PER_BLOCK)) {
       let file = inscriptions_files.get(i).unwrap();
@@ -156,20 +159,6 @@ impl InscribeChainDestinationAddresses {
     cli.push_str(&format!(" {}", self.dir.display()));
 
     return cli;
-  }
-
-  fn validate_btc_address(&self, network: bitcoin::network::constants::Network, address_str: &str) -> bool {
-    match Address::from_str(address_str) {
-      Ok(address) => {
-        if address.network == network {
-          return true;
-        }
-      }
-      Err(err) => {
-        panic!("Invalid btc address {}: {}", address_str, err);
-      }
-    }
-    panic!("Invalid btc address: {}", address_str);
   }
 }
 
