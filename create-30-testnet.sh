@@ -1,12 +1,12 @@
 #!/bin/bash
 
-dir="12-inscriptions-testnet"
+dir="30-inscriptions-testnet"
 mkdir -p $dir
 
 parentInscriptionId="3995befab6b08427416bf9442d6877f6057780f31cdca37eb600a12bcf5e9345i0"
 offsetInscriptionId="f4429c67523c9437f3db69fe0521f10dec4ae2b3bb64e98a1fd97c53c59803cai0"
 
-for ((i=1; i<=12; i++)); do
+for ((i=1; i<=30; i++)); do
     filename="${i}.html"
     filepath="${dir}/${filename}"
     tokenID=$i
