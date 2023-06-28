@@ -36,15 +36,13 @@ impl InscribeChainDestinationAddresses {
     let inscriptions_path = self.dir.join("inscriptions");
 
     if !Path::new(&inscriptions_path).exists() {
-      eprintln!("Error: inscriptions/ directory does not exist");
-      return Ok(());
+      return Err(anyhow!("Error: inscriptions/ directory does not exist"));
     }
 
     let addresses_path = self.dir.join("addresses");
 
     if !Path::new(&addresses_path).exists() {
-      eprintln!("Error: addresses/ directory does not exist");
-      return Ok(());
+      return Err(anyhow!("Error: addresses/ directory does not exist"));
     }
 
     let mut inscriptions_files: Vec<DirEntry> = fs::read_dir(inscriptions_path)
