@@ -1,4 +1,5 @@
 use bitcoin::SchnorrSig;
+use bitcoincore_rpc::RawTx;
 
 use {
   super::*,
@@ -21,11 +22,11 @@ use {
 };
 
 #[derive(Serialize)]
-struct Output {
-  commit: Txid,
+pub struct Output {
+  pub commit: Txid,
   inscription: InscriptionId,
   parent: Option<InscriptionId>,
-  reveal: Txid,
+  pub reveal: Txid,
   fees: u64,
 }
 
@@ -55,10 +56,21 @@ pub(crate) struct Inscribe {
   pub(crate) destination: Option<Address>,
   #[clap(long, help = "Establish parent relationship with <PARENT>.")]
   pub(crate) parent: Option<InscriptionId>,
+  #[clap(long, help = "Use already created commit transaction.")]
+  pub(crate) commit: Option<OutPoint>,
+  #[clap(long, help = "KeyPair to sign commit transaction with.")]
+  pub(crate) keypair: Option<UntweakedKeyPair>,
 }
 
 impl Inscribe {
-  pub(crate) fn run(self, options: Options) -> Result {
+  pub(crate) fn run(self, options: Options) -> Result<Output> {
+    if self.destination.is_none() {
+      bail!("--destination is required");
+    }
+    if self.commit.is_some() ^ self.keypair.is_some() {
+      bail!("--commit and --keypair must be used together");
+    }
+
     let index = Index::open(&options)?;
     index.update()?;
 
@@ -66,14 +78,28 @@ impl Inscribe {
 
     let mut utxos = index.get_unspent_outputs(Wallet::load(&options)?)?;
 
+    if let Some(satpoint) = &self.satpoint {
+      if utxos.get(&satpoint.outpoint).is_none() {
+        let mempool_transaction = client.get_raw_transaction(&satpoint.outpoint.txid, None)?;
+        let mempool_outpoint_amount =
+          Amount::from_sat(mempool_transaction.output[satpoint.outpoint.vout as usize].value);
+
+        utxos.insert(satpoint.outpoint, mempool_outpoint_amount);
+        //println!("Using a satpoint pending in the mempool.");
+      }
+    }
+
     let inscriptions = index.get_inscriptions(None)?;
 
     let (parent, commit_input_offset) = if let Some(parent_id) = self.parent {
       if let Some(satpoint) = index.get_inscription_satpoint_by_id(parent_id)? {
         if !utxos.contains_key(&satpoint.outpoint) {
-          return Err(anyhow!(format!(
-            "unrelated parent {parent_id} not accepting mailman's child" // for the germans: "Kuckuckskind"
-          )));
+          let mempool_transaction = client.get_raw_transaction(&satpoint.outpoint.txid, None)?;
+          let mempool_outpoint_amount =
+            Amount::from_sat(mempool_transaction.output[satpoint.outpoint.vout as usize].value);
+
+          utxos.insert(satpoint.outpoint, mempool_outpoint_amount);
+          //println!("Using a parent satpoint pending in the mempool.");
         }
 
         let output = index
@@ -103,7 +129,13 @@ impl Inscribe {
       .map(Ok)
       .unwrap_or_else(|| get_change_address(&client))?;
 
-    let (unsigned_commit_tx, partially_signed_reveal_tx, _recovery_key_pair) =
+    let broadcasted_commit_tx: Option<Transaction> = if let Some(commit) = self.commit {
+      Some(client.get_raw_transaction(&commit.txid, None)?)
+    } else {
+      None
+    };
+
+    let (unsigned_commit_tx, partially_signed_reveal_tx, recovery_key_pair) =
       Inscribe::create_inscription_transactions(
         self.satpoint,
         parent,
@@ -116,6 +148,8 @@ impl Inscribe {
         self.commit_fee_rate.unwrap_or(self.fee_rate),
         self.fee_rate,
         self.no_limit,
+        self.keypair,
+        broadcasted_commit_tx,
       )?;
 
     utxos.insert(
@@ -128,8 +162,12 @@ impl Inscribe {
       ),
     );
 
-    let fees = Self::calculate_fee(&unsigned_commit_tx, &utxos)
-      + Self::calculate_fee(&partially_signed_reveal_tx, &utxos);
+    let fees = if self.commit.is_some() {
+      Self::calculate_fee(&partially_signed_reveal_tx, &utxos)
+    } else {
+      Self::calculate_fee(&unsigned_commit_tx, &utxos)
+        + Self::calculate_fee(&partially_signed_reveal_tx, &utxos)
+    };
 
     if self.dry_run {
       print_json(Output {
@@ -140,20 +178,37 @@ impl Inscribe {
         fees,
       })?;
 
-      return Ok(());
+      let signed_raw_commit_tx = client
+        .sign_raw_transaction_with_wallet(&unsigned_commit_tx, None, None)?
+        .hex;
+
+      println!("commit tx hex\n{}\n", hex::encode(signed_raw_commit_tx));
+      println!("reveal tx hex\n{}", partially_signed_reveal_tx.raw_hex());
+
+      return Ok(Output {
+        commit: unsigned_commit_tx.txid(),
+        reveal: partially_signed_reveal_tx.txid(),
+        inscription: partially_signed_reveal_tx.txid().into(),
+        parent: self.parent,
+        fees,
+      });
     }
 
-    // if !self.no_backup {
-    // Inscribe::backup_recovery_key(&client, recovery_key_pair, options.chain().network())?;
-    // }
+    if !self.no_backup {
+      Inscribe::backup_recovery_key(&client, recovery_key_pair, options.chain().network())?;
+    }
 
-    let signed_raw_commit_tx = client
-      .sign_raw_transaction_with_wallet(&unsigned_commit_tx, None, None)?
-      .hex;
+    let commit = if let Some(commit) = self.commit {
+      commit.txid
+    } else {
+      let signed_raw_commit_tx = client
+        .sign_raw_transaction_with_wallet(&unsigned_commit_tx, None, None)?
+        .hex;
 
-    let commit = client
-      .send_raw_transaction(&signed_raw_commit_tx)
-      .context("Failed to send commit transaction")?;
+      client
+        .send_raw_transaction(&signed_raw_commit_tx)
+        .context("Failed to send commit transaction")?
+    };
 
     let reveal = if self.parent.is_some() {
       let fully_signed_raw_reveal_tx = client
@@ -174,6 +229,19 @@ impl Inscribe {
       index: 0,
     };
 
+    // update parent satpoint (only needed for inscribe-chain)
+    if let Some(parent_id) = self.parent {
+      let parent_new_satpoint = SatPoint {
+        outpoint: OutPoint {
+          txid: reveal,
+          vout: 0,
+        },
+        offset: 0,
+      };
+
+      index.insert_inscription_satpoint(parent_id, parent_new_satpoint)?;
+    }
+
     print_json(Output {
       commit,
       reveal,
@@ -182,7 +250,13 @@ impl Inscribe {
       fees,
     })?;
 
-    Ok(())
+    Ok(Output {
+      commit,
+      reveal,
+      inscription,
+      parent: self.parent,
+      fees,
+    })
   }
 
   fn calculate_fee(tx: &Transaction, utxos: &BTreeMap<OutPoint, Amount>) -> u64 {
@@ -206,6 +280,8 @@ impl Inscribe {
     commit_fee_rate: FeeRate,
     reveal_fee_rate: FeeRate,
     no_limit: bool,
+    keypair: Option<UntweakedKeyPair>,
+    broadcasted_commit_tx: Option<Transaction>,
   ) -> Result<(Transaction, Transaction, TweakedKeyPair)> {
     let satpoint = if let Some(satpoint) = satpoint {
       satpoint
@@ -225,6 +301,7 @@ impl Inscribe {
         .ok_or_else(|| anyhow!("wallet contains no cardinal utxos"))?
     };
 
+    /*
     for (inscribed_satpoint, inscription_id) in &inscriptions {
       if inscribed_satpoint == &satpoint {
         return Err(anyhow!("sat at {} already inscribed", satpoint));
@@ -237,10 +314,20 @@ impl Inscribe {
         ));
       }
     }
+    */
 
     let secp256k1 = Secp256k1::new();
-    let key_pair = UntweakedKeyPair::new(&secp256k1, &mut rand::thread_rng());
+
+    let key_pair = if let Some(keypair) = keypair {
+      keypair
+    } else {
+      UntweakedKeyPair::new(&secp256k1, &mut rand::thread_rng())
+    };
+
     let (public_key, _parity) = XOnlyPublicKey::from_keypair(&key_pair);
+
+    println!("key pair:");
+    print_json(key_pair)?;
 
     let reveal_script = inscription.append_reveal_script(
       script::Builder::new()
@@ -307,7 +394,8 @@ impl Inscribe {
       reveal_fee + TransactionBuilder::TARGET_POSTAGE,
     )?;
 
-    let (vout, output) = unsigned_commit_tx
+    let commit_tx = broadcasted_commit_tx.unwrap_or(unsigned_commit_tx);
+    let (vout, output) = commit_tx
       .output
       .iter()
       .enumerate()
@@ -315,7 +403,7 @@ impl Inscribe {
       .expect("should find sat commit/inscription output");
 
     inputs[commit_input_offset] = OutPoint {
-      txid: unsigned_commit_tx.txid(),
+      txid: commit_tx.txid(),
       vout: vout.try_into().unwrap(),
     };
 
@@ -407,10 +495,10 @@ impl Inscribe {
       );
     }
 
-    Ok((unsigned_commit_tx, reveal_tx, recovery_key_pair))
+    Ok((commit_tx, reveal_tx, recovery_key_pair))
   }
 
-  fn _backup_recovery_key(
+  fn backup_recovery_key(
     client: &Client,
     recovery_key_pair: TweakedKeyPair,
     network: Network,

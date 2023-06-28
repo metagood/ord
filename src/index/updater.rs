@@ -116,9 +116,20 @@ impl<'a> Updater<'a> {
         &mut outpoint_sender,
         &mut value_receiver,
         &mut wtx,
-        block,
+        &block,
         &mut value_cache,
       )?;
+
+      if self.height.checked_sub(1).is_some() {
+        log::info!(
+          target: "new_inscription_satpoint",
+          "{{\"height\":{},\"block_hash\":\"{}\",\"prev_block_hash\":\"{}\",\"tx_count\":{}}}",
+          &self.height - 1,
+          &block.header.block_hash(),
+          &block.header.prev_blockhash,
+          &block.txdata.len(),
+        );
+      }
 
       if let Some(progress_bar) = &mut progress_bar {
         progress_bar.inc(1);
@@ -336,7 +347,7 @@ impl<'a> Updater<'a> {
     outpoint_sender: &mut Sender<OutPoint>,
     value_receiver: &mut Receiver<u64>,
     wtx: &mut WriteTransaction,
-    block: BlockData,
+    block: &BlockData,
     value_cache: &mut HashMap<OutPoint, u64>,
   ) -> Result<()> {
     // If value_receiver still has values something went wrong with the last block
@@ -434,6 +445,7 @@ impl<'a> Updater<'a> {
       block.header.time,
       value_cache,
       self.cached_children_by_id,
+      // &index.client,
     )?;
 
     if self.index_sats {

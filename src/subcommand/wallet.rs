@@ -18,12 +18,15 @@ pub mod balance;
 pub mod cardinals;
 pub mod create;
 pub(crate) mod inscribe;
+pub mod inscribe_chain;
+pub mod inscribe_chain_destination_addresses;
 pub mod inscriptions;
 pub mod outputs;
 pub mod receive;
 mod restore;
 pub mod sats;
 pub mod send;
+pub mod split;
 pub(crate) mod transaction_builder;
 pub mod transactions;
 
@@ -51,6 +54,12 @@ pub(crate) enum Wallet {
   Outputs,
   #[clap(about = "List unspent cardinal outputs in wallet")]
   Cardinals,
+  #[clap(about = "Inscribe a directory of files on specific sats, 12 at a time using CPFP. Takes as an argument, a path to a directory of files to be inscribed.")]
+  InscribeChain(inscribe_chain::InscribeChain),
+  #[clap(about = "Inscribe a directory of files on specific sats, sent to specific destination addresses, 12 at a time using CPFP. Takes as an argument, a path to a directory containing 'addresses/' and 'inscriptions/' subdirs.")]
+  InscribeChainDestinationAddresses(inscribe_chain_destination_addresses::InscribeChainDestinationAddresses),
+  #[clap(about = "Split a utxo into multiple utxo's of smaller, equal denominations.")]
+  Split(split::Split),
 }
 
 impl Wallet {
@@ -58,7 +67,9 @@ impl Wallet {
     match self {
       Self::Balance => balance::run(options),
       Self::Create(create) => create.run(options),
-      Self::Inscribe(inscribe) => inscribe.run(options),
+      Self::Inscribe(inscribe) => inscribe.run(options).map(|_| Ok(()))?,
+      Self::InscribeChain(inscribe_chain) => inscribe_chain.run(options),
+      Self::InscribeChainDestinationAddresses(inscribe_chain_destination_addresses) => inscribe_chain_destination_addresses.run(options),
       Self::Inscriptions => inscriptions::run(options),
       Self::Receive => receive::run(options),
       Self::Restore(restore) => restore.run(options),
@@ -67,6 +78,7 @@ impl Wallet {
       Self::Transactions(transactions) => transactions.run(options),
       Self::Outputs => outputs::run(options),
       Self::Cardinals => cardinals::run(options),
+      Self::Split(split) => split.run(options),
     }
   }
 }

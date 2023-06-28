@@ -525,6 +525,21 @@ impl Index {
     )
   }
 
+  pub(crate) fn insert_inscription_satpoint(
+    &self,
+    inscription_id: InscriptionId,
+    satpoint: SatPoint,
+  ) -> Result {
+    let tx = self.database.begin_write()?;
+
+    tx.open_table(INSCRIPTION_ID_TO_SATPOINT)?
+      .insert(&inscription_id.store(), &satpoint.store())?;
+
+    tx.commit()?;
+
+    Ok(())
+  }
+
   pub(crate) fn get_inscription_satpoint_by_id(
     &self,
     inscription_id: InscriptionId,

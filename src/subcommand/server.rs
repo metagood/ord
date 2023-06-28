@@ -732,7 +732,8 @@ impl Server {
       return None;
     }
 
-    let json_result: Result<Value, serde_json::Error> = serde_json::from_slice(&inscription.body().unwrap());
+    let json_result: Result<Value, serde_json::Error> =
+      serde_json::from_slice(&inscription.body().unwrap());
     let json: Value = json_result.unwrap();
 
     if !json.as_object().unwrap().contains_key("use_p") {
@@ -756,7 +757,10 @@ impl Server {
 
     if let Some(url_params_field) = json.get("params") {
       if let Some(url_params) = url_params_field.as_array() {
-        let param_strs: Vec<&str> = url_params.into_iter().map(|v| v.as_str().unwrap()).collect();
+        let param_strs: Vec<&str> = url_params
+          .into_iter()
+          .map(|v| v.as_str().unwrap())
+          .collect();
         params_str = param_strs.join("&");
       }
     }
@@ -768,19 +772,31 @@ impl Server {
     format!("?{params_str}")
   }
 
-  fn get_content_response_if_child_pointer(inscription: &Inscription) -> Option<ServerResult<Response>> {
+  fn get_content_response_if_child_pointer(
+    inscription: &Inscription,
+  ) -> Option<ServerResult<Response>> {
     let parent_url_params = Self::get_parent_url_params_if_child_pointer(inscription);
     if let Some(url_params) = parent_url_params {
-      let redirect_uri = format!("/content/{}{}", inscription.get_parent_id().unwrap(), url_params);
+      let redirect_uri = format!(
+        "/content/{}{}",
+        inscription.get_parent_id().unwrap(),
+        url_params
+      );
       return Some(Ok(Redirect::permanent(&redirect_uri).into_response()));
     }
     None
   }
 
-  fn get_preview_response_if_child_pointer(inscription: &Inscription) -> Option<ServerResult<Response>> {
+  fn get_preview_response_if_child_pointer(
+    inscription: &Inscription,
+  ) -> Option<ServerResult<Response>> {
     let parent_url_params = Self::get_parent_url_params_if_child_pointer(inscription);
     if let Some(url_params) = parent_url_params {
-      let redirect_uri = format!("/preview/{}{}", inscription.get_parent_id().unwrap(), url_params);
+      let redirect_uri = format!(
+        "/preview/{}{}",
+        inscription.get_parent_id().unwrap(),
+        url_params
+      );
       return Some(Ok(Redirect::permanent(&redirect_uri).into_response()));
     }
     None
@@ -823,7 +839,11 @@ impl Server {
     );
     headers.insert(
       header::CONTENT_SECURITY_POLICY,
-      HeaderValue::from_static("default-src 'unsafe-eval' 'unsafe-inline' data:"),
+      HeaderValue::from_static("default-src 'self' 'unsafe-eval' 'unsafe-inline' data:"),
+    );
+    headers.append(
+      header::CONTENT_SECURITY_POLICY,
+      HeaderValue::from_static("default-src *:*/content/ 'unsafe-eval' 'unsafe-inline' data:"),
     );
     headers.insert(
       header::CACHE_CONTROL,
@@ -1056,9 +1076,7 @@ mod tests {
       Self::new_server(test_bitcoincore_rpc::spawn(), None, ord_args, server_args)
     }
 
-    fn new_with_bitcoin_rpc_server(
-      bitcoin_rpc_server: test_bitcoincore_rpc::Handle,
-    ) -> Self {
+    fn new_with_bitcoin_rpc_server(bitcoin_rpc_server: test_bitcoincore_rpc::Handle) -> Self {
       Self::new_server(bitcoin_rpc_server, None, &[], &[])
     }
 
@@ -2285,7 +2303,7 @@ mod tests {
     server.assert_response_csp(
       format!("/preview/{}", InscriptionId::from(txid)),
       StatusCode::OK,
-      "default-src 'unsafe-eval' 'unsafe-inline' data:",
+      "default-src 'self' 'unsafe-eval' 'unsafe-inline' data:",
       "hello",
     );
   }
@@ -2641,8 +2659,9 @@ mod tests {
         inscription_with_parent(
           "application/json",
           "{\"use_p\":1,\"params\":[\"tokenID=69\"]}",
-          parent_inscription
-        ).to_witness()
+          parent_inscription,
+        )
+        .to_witness(),
       ],
       ..Default::default()
     });
@@ -2657,11 +2676,11 @@ mod tests {
 
     server.assert_redirect_permanent(
       &format!("/preview/{child_inscription}"),
-      &format!("/preview/{parent_inscription}?tokenID=69")
+      &format!("/preview/{parent_inscription}?tokenID=69"),
     );
     server.assert_redirect_permanent(
       &format!("/content/{child_inscription}"),
-      &format!("/content/{parent_inscription}?tokenID=69")
+      &format!("/content/{parent_inscription}?tokenID=69"),
     );
   }
 
@@ -2682,11 +2701,8 @@ mod tests {
       inputs: &[(2, 1, 0), (2, 0, 0)],
       witnesses: vec![
         Witness::new(),
-        inscription_with_parent(
-          "application/json",
-          "{\"use_p\":1}",
-          parent_inscription
-        ).to_witness()
+        inscription_with_parent("application/json", "{\"use_p\":1}", parent_inscription)
+          .to_witness(),
       ],
       ..Default::default()
     });
@@ -2701,11 +2717,11 @@ mod tests {
 
     server.assert_redirect_permanent(
       &format!("/preview/{child_inscription}"),
-      &format!("/preview/{parent_inscription}")
+      &format!("/preview/{parent_inscription}"),
     );
     server.assert_redirect_permanent(
       &format!("/content/{child_inscription}"),
-      &format!("/content/{parent_inscription}")
+      &format!("/content/{parent_inscription}"),
     );
   }
 
@@ -2729,8 +2745,9 @@ mod tests {
         inscription_with_parent(
           "application/json",
           "{\"not_ord_pointer\":1}",
-          parent_inscription
-        ).to_witness()
+          parent_inscription,
+        )
+        .to_witness(),
       ],
       ..Default::default()
     });
@@ -2768,7 +2785,8 @@ mod tests {
       inputs: &[(2, 1, 0), (2, 0, 0)],
       witnesses: vec![
         Witness::new(),
-        inscription_with_parent("text/plain;charset=utf-8", "child", parent_inscription).to_witness(),
+        inscription_with_parent("text/plain;charset=utf-8", "child", parent_inscription)
+          .to_witness(),
       ],
       ..Default::default()
     });

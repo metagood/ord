@@ -1,10 +1,12 @@
+use serde_json::Value;
 use {super::*, std::collections::BTreeSet};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub(super) struct Flotsam {
   inscription_id: InscriptionId,
   offset: u64,
   origin: Origin,
+  tx: Option<Transaction>,
 }
 
 // change name to Jetsam or more poetic german word
@@ -30,6 +32,7 @@ pub(super) struct InscriptionUpdater<'a, 'db, 'tx> {
   timestamp: u32,
   value_cache: &'a mut HashMap<OutPoint, u64>,
   cached_children_by_id: &'a Mutex<HashMap<InscriptionId, Vec<InscriptionId>>>,
+  // client: &'a Client,
 }
 
 impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
@@ -46,6 +49,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
     timestamp: u32,
     value_cache: &'a mut HashMap<OutPoint, u64>,
     cached_children_by_id: &'a Mutex<HashMap<InscriptionId, Vec<InscriptionId>>>,
+    // client: &'a Client,
   ) -> Result<Self> {
     let next_number = number_to_id
       .iter()?
@@ -70,6 +74,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
       timestamp,
       value_cache,
       cached_children_by_id,
+      // client,
     })
   }
 
@@ -97,6 +102,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
           offset: input_value + old_satpoint.offset,
           inscription_id,
           origin: Origin::Old(old_satpoint),
+          tx: None,
         });
 
         inscribed_offsets.insert(input_value + old_satpoint.offset);
@@ -139,6 +145,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
             inscription_id,
             offset: input_value,
             origin: Origin::New((0, parent)),
+            tx: Some(tx.clone()),
           });
         }
       }
@@ -170,12 +177,14 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
           inscription_id,
           offset,
           origin: Origin::New((_, parent)),
+          tx,
         } = flotsam
         {
           Flotsam {
             inscription_id,
             offset,
             origin: Origin::New((input_value - total_output_value, parent)),
+            tx,
           }
         } else {
           flotsam
@@ -316,6 +325,48 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
     self.satpoint_to_id.insert(&new_satpoint, &inscription_id)?;
     self.id_to_satpoint.insert(&inscription_id, &new_satpoint)?;
 
+    let inscription_id = InscriptionId::load(inscription_id);
+    let satpoint = SatPoint::load(new_satpoint);
+    let inscription_entry = self.id_to_entry.get(&inscription_id.store())?.unwrap();
+    let inscription_number = InscriptionEntry::load(inscription_entry.value()).number;
+
+    if let Some(tx) = flotsam.tx {
+      let inscription = Inscription::from_transaction(&tx).unwrap();
+      let is_brc_20 = Self::is_brc_20(&self, &inscription);
+
+      // if !Self::is_brc_20(&self, &inscription) {
+      let content_type = inscription.content_type().unwrap_or("");
+      let content_len = inscription.body().map_or(0, |body| body.len());
+
+      log::info!(
+        target: "new_inscription_satpoint",
+        "{},{},{},{},{},{},{}",
+        self.height,
+        satpoint,
+        inscription_id,
+        inscription_number,
+        content_type,
+        content_len,
+        is_brc_20,
+      );
+      // }
+    } else {
+      // let inscription = self
+      //   .get_transaction(inscription_id.txid)?
+      //   .and_then(|tx| Inscription::from_transaction(&tx)).unwrap();
+
+      // if !Self::is_brc_20(&self, &inscription) {
+      log::info!(
+        target: "new_inscription_satpoint",
+        "{},{},{},{}",
+        self.height,
+        satpoint,
+        inscription_id,
+        inscription_number,
+      );
+      // }
+    }
+
     Ok(())
   }
 
@@ -326,5 +377,37 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
     if let Some(children) = cache.get_mut(&parent) {
       children.push(inscription_id);
     }
+  }
+
+  fn valid_json(data: Option<&[u8]>) -> bool {
+    match data {
+      Some(bytes) => serde_json::from_slice::<Value>(bytes).is_ok(),
+      None => false,
+    }
+  }
+
+  // fn get_transaction(&self, txid: Txid) -> Result<Option<Transaction>> {
+  //   self.client.get_raw_transaction(&txid, None).into_option()
+  // }
+
+  fn is_brc_20(&self, inscription: &Inscription) -> bool {
+    let valid_json = Self::valid_json(inscription.body());
+    if valid_json {
+      let json_result: Result<Value, serde_json::Error> =
+        serde_json::from_slice(&inscription.body().unwrap());
+      let json: Value = json_result.unwrap();
+      let empty_json = serde_json::Map::new();
+      let json_obj = json.as_object().unwrap_or(&empty_json);
+      if json_obj.contains_key("p") {
+        let p = json_obj.get("p").unwrap();
+        if p.is_string() {
+          let p_str = p.as_str().unwrap();
+          if p_str.to_lowercase() == "brc-20" {
+            return true;
+          }
+        }
+      }
+    }
+    false
   }
 }
