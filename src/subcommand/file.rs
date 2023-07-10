@@ -11,6 +11,8 @@ pub(crate) struct File {
 impl File {
   pub(crate) fn run(&self, options: Options) -> Result {
     let client = options.bitcoin_rpc_client()?;
+    // TODO: not sure which one we need here
+    // let client = options.bitcoin_rpc_client_for_wallet_command(false)?;
 
     let tx = client.get_raw_transaction(&self.inscription.txid, None)?;
     let inscription = &Inscription::from_transaction(&tx)[self.inscription.index as usize];
