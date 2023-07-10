@@ -259,7 +259,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
               cursed,
               unbound,
             },
-            inscription_data,
+          inscription_data,
         } = flotsam
         {
           Flotsam {
@@ -456,7 +456,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
     // let inscription_number = InscriptionEntry::load(inscription_entry.value()).number;
     let inscription_number = if new_inscription_number != 0 {
       new_inscription_number
-    }  else {
+    } else {
       let inscription_entry = self.id_to_entry.get(&inscription_id.store())?.unwrap();
       InscriptionEntry::load(inscription_entry.value()).number
     };
