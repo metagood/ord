@@ -1,6 +1,50 @@
 Changelog
 =========
 
+[0.8.0](https://github.com/ordinals/ord/releases/tag/0.8.0) - 2023-07-01
+---------------------------------------------------------------------
+
+### Added
+
+- Dev server deploy script (#2228)
+- Set DB cache size (#2224)
+- Update redb from 0.13.0 to 1.0.2 (#2141)
+- Fix typo in BIP (#2220)
+
+
+[0.7.0](https://github.com/ordinals/ord/releases/tag/0.7.0) - 2023-06-23
+---------------------------------------------------------------------
+
+### Added
+- Tweak publish recipe (#2212)
+- Handle cursed inscriptions edge cases (#2209)
+- Add export command for <INSCRIPTION_NUMBER_TO_INSCRIPTION_ID> table (#2208)
+- Add Markdown media type (#2206)
+- Add blob urls to Content Security Policy headers (#2203)
+- Check inscribe destination address network (#2189)
+
+
+[0.6.2](https://github.com/ordinals/ord/releases/tag/0.6.2) - 2023-06-15
+---------------------------------------------------------------------
+
+### Added
+- Recursive endpoints: `/blockhash, /blockheight, /blocktime` (#2175)
+- Document recursion (#2174)
+- Add CSS and JavaScript media types (#2173)
+- Recursive Inscriptions (#2167)
+
+### Misc
+- Update ord dependency in lockfile (#2168)
+
+
+[0.6.1](https://github.com/ordinals/ord/releases/tag/0.6.1) - 2023-06-06
+---------------------------------------------------------------------
+
+### Changed 
+- Fix sat index test and unbound assignment (#2154)
+- Updated install.sh for new repo name (#2155)
+
+
 [0.6.0](https://github.com/ordinals/ord/releases/tag/0.6.0) - 2023-06-04
 ---------------------------------------------------------------------
 
