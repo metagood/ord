@@ -1,6 +1,5 @@
 use serde_json::Value;
 use {super::*, inscription::Curse};
-use serde_json::Value;
 
 #[derive(Debug, Clone)]
 pub(super) struct Flotsam {
