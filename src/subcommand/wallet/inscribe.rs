@@ -198,31 +198,63 @@ impl Inscribe {
       Inscribe::backup_recovery_key(&client, recovery_key_pair, options.chain().network())?;
     }
 
-    let commit = if let Some(commit) = self.commit {
-      commit.txid
-    } else {
-      let signed_raw_commit_tx = client
+    let mut commit_to_broadcast: Option<Vec<u8>> = None;
+    let reveal_to_broadcast: Vec<u8>;
+    let commit: Txid;
+    let reveal: Txid;
+
+    if self.commit.is_none() {
+      let signed_commit = client
         .sign_raw_transaction_with_wallet(&unsigned_commit_tx, None, None)?
         .hex;
 
-      client
-        .send_raw_transaction(&signed_raw_commit_tx)
-        .context("Failed to send commit transaction")?
-    };
+      commit_to_broadcast = Some(signed_commit);
+    }
 
-    let reveal = if self.parent.is_some() {
+    if self.parent.is_some() {
       let fully_signed_raw_reveal_tx = client
         .sign_raw_transaction_with_wallet(&partially_signed_reveal_tx, None, None)?
         .hex;
 
-      client
-        .send_raw_transaction(&fully_signed_raw_reveal_tx)
-        .context("Failed to send reveal transaction")?
+      reveal_to_broadcast = fully_signed_raw_reveal_tx;
     } else {
+      let signed_reveal = hex::decode(partially_signed_reveal_tx.raw_hex())?;
+      reveal_to_broadcast = signed_reveal;
+    }
+
+    let mut txns_to_broadcast: Vec<&Vec<u8>> = Vec::new();
+
+    if let Some(commit) = &commit_to_broadcast {
+      txns_to_broadcast.push(commit);
+    }
+
+    txns_to_broadcast.push(&reveal_to_broadcast);
+
+    let test_mempool_accept = client
+      .test_mempool_accept(txns_to_broadcast.as_slice())
+      .expect("Failed to test mempool accept");
+    let is_mempool_accepted = test_mempool_accept
+      .clone()
+      .into_iter()
+      .map(|x| x.allowed)
+      .fold(true, |acc, item| acc && item);
+
+    if !is_mempool_accepted {
+      print_json(test_mempool_accept)?;
+      bail!("testmempoolaccept failed!");
+    }
+
+    commit = if let Some(commit) = commit_to_broadcast {
       client
-        .send_raw_transaction(&partially_signed_reveal_tx)
-        .context("Failed to send reveal transaction")?
+        .send_raw_transaction(&commit)
+        .context("Failed to send commit transaction")?
+    } else {
+      self.commit.unwrap().txid
     };
+
+    reveal = client
+      .send_raw_transaction(&reveal_to_broadcast)
+      .context("Failed to send reveal transaction")?;
 
     let inscription = InscriptionId {
       txid: reveal,
