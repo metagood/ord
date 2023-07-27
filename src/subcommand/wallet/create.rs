@@ -1,7 +1,5 @@
-use bitcoin::{
-  secp256k1::PublicKey,
-  util::bip32::{self, ExtendedPubKey},
-};
+use bitcoin::secp256k1::PublicKey;
+use bitcoin::bip32::{self, ExtendedPubKey};
 
 use super::*;
 
