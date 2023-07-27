@@ -1,14 +1,12 @@
-use bitcoin::{
-  secp256k1::PublicKey,
-  util::bip32::{self, ExtendedPubKey},
-};
+use bitcoin::secp256k1::PublicKey;
+use bitcoin::bip32::{self, ExtendedPubKey};
 
 use super::*;
 
 #[derive(Serialize, Deserialize)]
 pub struct Output {
   pub mnemonic: Mnemonic,
-  pub address: Address,
+  pub address: bitcoin::Address<bitcoin::address::NetworkUnchecked>,
   pub public_key: PublicKey,
   pub passphrase: Option<String>,
 }
