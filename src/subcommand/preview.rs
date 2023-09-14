@@ -2,7 +2,7 @@ use {super::*, fee_rate::FeeRate};
 
 #[derive(Debug, Parser)]
 pub(crate) struct Preview {
-  #[clap(flatten)]
+  #[command(flatten)]
   server: super::server::Server,
   inscriptions: Vec<PathBuf>,
 }
@@ -16,7 +16,7 @@ impl Drop for KillOnDrop {
 }
 
 impl Preview {
-  pub(crate) fn run(self) -> Result {
+  pub(crate) fn run(self) -> SubcommandResult {
     let tmpdir = TempDir::new()?;
 
     let rpc_port = TcpListener::bind("127.0.0.1:0")?.local_addr()?.port();
@@ -86,7 +86,10 @@ impl Preview {
             satpoint: None,
             dry_run: false,
             no_limit: false,
+            reinscribe: false,
             destination: None,
+            parent: None,
+            postage: Some(TransactionBuilder::TARGET_POSTAGE),
           },
         )),
       }
@@ -101,8 +104,6 @@ impl Preview {
       options,
       subcommand: Subcommand::Server(self.server),
     }
-    .run()?;
-
-    Ok(())
+    .run()
   }
 }
