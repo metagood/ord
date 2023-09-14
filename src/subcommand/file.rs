@@ -9,7 +9,7 @@ pub(crate) struct File {
 }
 
 impl File {
-  pub(crate) fn run(&self, options: Options) -> Result {
+  pub(crate) fn run(&self, options: Options) -> SubcommandResult {
     let client = options.bitcoin_rpc_client()?;
     // TODO: not sure which one we need here
     // let client = options.bitcoin_rpc_client_for_wallet_command(false)?;
@@ -21,6 +21,6 @@ impl File {
     let mut file = fs::File::create(self.filename.clone())?;
     file.write_all(content_bytes)?;
 
-    Ok(())
+    Ok(Box::new(()))
   }
 }
