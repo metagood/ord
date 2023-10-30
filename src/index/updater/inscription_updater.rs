@@ -256,7 +256,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
             pointer: inscription.payload.pointer(),
             unbound,
           },
-          inscription_data: Some(inscription.inscription.clone()),
+          inscription_data: Some(inscription.payload.clone()),
         });
 
         envelopes.next();
@@ -440,7 +440,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
     new_satpoint: SatPoint,
   ) -> Result {
     let inscription_id = flotsam.inscription_id.store();
-    let mut new_inscription_number: i64 = 0;
+    let new_inscription_number: i64 = 0;
     let unbound = match flotsam.origin {
       Origin::Old { old_satpoint } => {
         self.satpoint_to_id.remove_all(&old_satpoint.store())?;
@@ -534,7 +534,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
       new_inscription_number
     } else {
       let inscription_entry = self.id_to_entry.get(&inscription_id.store())?.unwrap();
-      InscriptionEntry::load(inscription_entry.value()).number
+      InscriptionEntry::load(inscription_entry.value()).inscription_number
     };
 
     if let Some(inscription) = flotsam.inscription_data {
