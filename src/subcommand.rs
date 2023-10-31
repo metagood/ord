@@ -2,6 +2,7 @@ use super::*;
 
 pub mod decode;
 pub mod epochs;
+pub mod file;
 pub mod find;
 mod index;
 pub mod info;
@@ -45,6 +46,8 @@ pub(crate) enum Subcommand {
   Traits(traits::Traits),
   #[command(subcommand, about = "Wallet commands")]
   Wallet(wallet::Wallet),
+  #[clap(about = "Create a file with the inscription's content")]
+  File(file::File),
 }
 
 impl Subcommand {
@@ -69,6 +72,7 @@ impl Subcommand {
       Self::Teleburn(teleburn) => teleburn.run(),
       Self::Traits(traits) => traits.run(),
       Self::Wallet(wallet) => wallet.run(options),
+      Self::File(file) => file.run(options),
     }
   }
 }

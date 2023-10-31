@@ -1,3 +1,4 @@
+use dirs::home_dir;
 use {
   self::{
     entry::{
@@ -452,6 +453,23 @@ impl Index {
   }
 
   pub(crate) fn update(&self) -> Result {
+    // verify cwd is ~
+    if let Ok(current_dir) = env::current_dir() {
+      if let Some(home) = home_dir() {
+        if current_dir != home {
+          println!(
+            "Current working directory is not home ({:?}), cannot update the index!",
+            home
+          );
+          panic!("Current working directory must be the home directory")
+        }
+      } else {
+        panic!("Failed to get the home directory")
+      }
+    } else {
+      panic!("Failed to get the current working directory");
+    }
+
     let mut updater = Updater::new(self)?;
 
     loop {
