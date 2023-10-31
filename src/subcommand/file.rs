@@ -18,6 +18,7 @@ impl File {
     let mut file_number = 2;
 
     for inscription in inscriptions {
+      println!("Saving inscription to file {:?}", filename);
       let content_bytes = inscription.payload.body().unwrap();
       let mut file = fs::File::create(self.filename.clone())?;
       file.write_all(content_bytes)?;
