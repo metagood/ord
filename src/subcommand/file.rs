@@ -25,8 +25,8 @@ impl File {
 
       filename.set_file_name(format!(
         "{}-{}{}",
-        file_number,
         filename.file_stem().unwrap().to_str().unwrap(),
+        file_number,
         filename.extension().unwrap().to_str().unwrap()
       ));
       file_number += 1;
